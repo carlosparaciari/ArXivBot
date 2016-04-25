@@ -1,7 +1,34 @@
-from customised_exceptions import NoArgumentError, GetRequestError
+from customised_exceptions import NoArgumentError, GetRequestError, UnknownError
 import requests
 import feedparser
 import urllib
+
+# Request function to comunicate with the arxiv and download the informations
+# It takes a string (the link) as argument
+# Check for the main connection errors.
+
+def request_to_arxiv(arxiv_search_link):
+
+	if not isinstance(arxiv_search_link, str):
+		raise TypeError('The argument passed is not a string.')
+
+	# Making a query to the arxiv
+	try:
+		response = requests.get( arxiv_search_link ) 
+	except requests.exceptions.InvalidSchema as invalid_schema:
+		raise invalid_schema
+	except requests.exceptions.MissingSchema as missing_schema:
+		raise missing_schema
+	except:
+		raise GetRequestError('Get from arxiv failed. Might be connection problem')
+
+	# Check the status of the response
+	try:
+		response.raise_for_status()
+	except requests.exceptions.HTTPError as connection_error:
+		raise connection_error
+	else:
+		return response
 
 # Advanced search the arxiv.
 # As parameter, it takes the following parameters:
@@ -52,18 +79,29 @@ def advanced_search(author, title, abstract, comment, jref, category, rnum, iden
 	# Remove last connector fromt the search
 	arxiv_search_link = arxiv_search_link[: - len(connector) ]
 
-	# Making a query to the arxiv
+	# Make the request
 	try:
-		response = requests.get( arxiv_search_link ) 
-	except requests.exceptions.InvalidSchema:
-		raise requests.exceptions.InvalidSchema
-	except:
+		response = request_to_arxiv(arxiv_search_link)
+	except requests.exceptions.InvalidSchema as invalid_schema:
+		raise invalid_schema
+	except requests.exceptions.MissingSchema as missing_schema:
+		raise missing_schema
+	except GetRequestError:
 		raise GetRequestError('Get from arxiv failed. Might be connection problem')
-
-	# Check the status of the response
-	try:
-		response.raise_for_status()
 	except requests.exceptions.HTTPError as connection_error:
 		raise connection_error
+	except TypeError:
+		raise TypeError('The argument passed is not a string.')
+	except:
+		raise UnknownError('During the request to Arxiv something went wrong.')
 	else:
 		return response
+
+# The simple search on the arxiv.
+# It takes the argument of the search, which is searched in the all fields,
+# such as title, author, etc. The argument of this function has to be a string.
+# If nothing is passed, the search is not perfomed.
+
+def simple_search(word):
+
+	return 0	

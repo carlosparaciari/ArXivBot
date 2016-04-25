@@ -11,3 +11,11 @@ class GetRequestError(Exception):
 		self.value = value
 	def __str__(self):
 		return repr(self.value)
+
+# Exception raised when some generic error is raised
+class UnknownError(Exception):
+	def __init__(self, value):
+		self.value = value
+	def __str__(self):
+		return repr(self.value)
+
