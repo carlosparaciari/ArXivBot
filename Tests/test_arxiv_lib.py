@@ -1,3 +1,6 @@
+import sys, os
+sys.path.append(os.path.abspath(os.path.join('..', 'Library')))
+
 from nose.tools import assert_raises, assert_equal
 import arxiv_lib as al
 from customised_exceptions import NoArgumentError, GetRequestError
@@ -27,7 +30,7 @@ def test_advanced_search_status_code():
 def test_advanced_search_correct():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
-	test_file = 'text_response_test_advanced_search.txt'
+	test_file = os.path.join('Data', 'text_response_test_advanced_search.txt')
 
 	search_link = al.advanced_search('sparaciari_c', 'kullback', False, False, False, False, False, False, link)
 	response = al.request_to_arxiv(search_link).text
@@ -119,7 +122,7 @@ def test_parse_response_wrong_argument():
 def test_parse_response_correct():
 
 	link = 'http://export.arxiv.org/api/query?search_query=all:electron+AND+all:proton'
-	test_file = 'text_parsing_test.txt'
+	test_file = os.path.join('Data', 'text_parsing_test.txt')
 
 	response = al.request_to_arxiv(link)
 	parsed_response = al.parse_response(response)
