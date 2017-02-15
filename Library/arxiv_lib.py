@@ -216,11 +216,11 @@ def simple_search(words, arxiv_search_link):
 	# If the argument is a list of words, iterate over it
 	if isinstance(words, list):
 		for word in words:
-			if isinstance(word, str):
+			if isinstance(word, str) or isinstance(word, unicode):
 				arxiv_search_link += key + word + connector
 
 	# If it is a single string, add it without iterations
-	elif isinstance(words, str):
+	elif isinstance(words, str) or isinstance(words, unicode):
 		arxiv_search_link += key + words + connector
 
 	# Check that search_def is not empty. In that case, return error
@@ -231,5 +231,3 @@ def simple_search(words, arxiv_search_link):
 	arxiv_search_link = arxiv_search_link[: - len(connector) ]
 
 	return arxiv_search_link
-
-	return 0	

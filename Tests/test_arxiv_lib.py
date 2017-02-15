@@ -61,13 +61,33 @@ def test_simple_search_correctness_str():
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
-# When the simple search returns the correct link for a list argument
-def test_simple_search_correctness_list():
+# When the simple search returns the correct link for a unicode argument
+def test_simple_search_correctness_unicode():
+
+	link = 'http://export.arxiv.org/api/query?search_query='
+	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron'
+
+	obtained_link = al.simple_search(u'electron', link)
+
+	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
+
+# When the simple search returns the correct link for a string list argument
+def test_simple_search_correctness_str_list():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
 	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron+AND+all:proton'
 
 	obtained_link = al.simple_search(['electron', 'proton'], link)
+
+	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
+
+# When the simple search returns the correct link for a unicode list argument
+def test_simple_search_correctness_unicode_list():
+
+	link = 'http://export.arxiv.org/api/query?search_query='
+	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron+AND+all:proton'
+
+	obtained_link = al.simple_search([u'electron', u'proton'], link)
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
