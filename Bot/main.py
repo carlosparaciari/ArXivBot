@@ -1,65 +1,177 @@
+import sys, os
+sys.path.append(os.path.abspath(os.path.join('..', 'Library')))
+
+import arxiv_lib as al
 import yaml
 import time
-import os
 import telepot
 
-def handle(msg):
-    content_type, chat_type, chat_id = telepot.glance(msg)
-    print(content_type, chat_type, chat_id)
+from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, EasySearchError
 
-    if content_type == 'text':
-        bot.sendMessage(chat_id, msg['text'])
+# Emoji Remover --------------------------------
 
-with open(os.path.join('Data','detail.yaml'), 'r') as file_input:
+import re
+
+# The remove_emoji_from_text function removes any emoji from the text,
+# and returns a message without emoji.
+# Function taken from Stackoverflow:
+#
+# http://stackoverflow.com/questions/26568722/remove-unicode-emoji-using-re-in-python
+#
+# Thanks to Martijn Pieters.
+
+def remove_emoji_from_text(text_msg):
+
+	try:
+		# Wide UCS-4 build
+		myre = re.compile(u'['
+			u'\U0001F300-\U0001F64F'
+			u'\U0001F680-\U0001F6FF'
+			u'\u2600-\u26FF\u2700-\u27BF]+', 
+			re.UNICODE)
+	except re.error:
+		# Narrow UCS-2 build
+		myre = re.compile(u'('
+			u'\ud83c[\udf00-\udfff]|'
+			u'\ud83d[\udc00-\ude4f\ude80-\udeff]|'
+			u'[\u2600-\u26FF\u2700-\u27BF])+', 
+			re.UNICODE)
+
+	# Remove the emoji from the string
+	cleared_text = myre.sub('', text_msg)
+
+	return cleared_text                          # <-------------------------- DOES NOT FILTER EMOJI SUCH AS THE HEART! :(
+
+# ArxivBot Class -------------------------------
+
+# Class ArxivBot inherits from the telepot.Bot class.
+# The calss is used to deal with the messaged recived by the bot on Telegram,
+# and to perform simple or advanced searches on the Arxiv website.
+
+class ArxivBot(telepot.Bot):
+
+	# Class constructor
+
+	def __init__(self, *args, **kwargs):
+
+		super(ArxivBot, self).__init__(*args, **kwargs)
+		self.arxiv_search_link = 'http://export.arxiv.org/api/query?search_query='
+
+	# The handle method receives the message sent by the user and processes it depending
+	# on the different "flavor" associated to it.
+
+	def handle(self, msg):
+
+		msg_flavor = telepot.flavor(msg)
+
+		if msg_flavor == 'chat':
+			self.handle_chat_message(msg)
+		elif msg_flavor == 'callback_query':
+			self.handle_callback_query(msg)
+		elif msg_flavor == 'inline_query':
+			self.handle_inline_query(msg)
+		elif msg_flavor == 'chosen_inline_result':
+			self.handle_chosen_inline_result(msg)
+		else:
+			raise telepot.BadFlavor(msg)
+
+	# The handle_chat_message method is called by the handle method when the "flavor" of the
+	# message is 'chat'. The user is allowed to send three different commands:
+	#
+	# - /search = perform a simple serch on all fields in the Arxiv
+	# - /advsearch = perform an advanced search within different fields in the Arxiv
+	# - /help = send an help message to the user
+	#
+	# If another command is sent, the method suggest the user to use the /help.
+	# If the /search command is used, the do_easy_search method is called.
+	# If the /advsearch command is used, the do_advanced_search is called.
+	# If the /help command is used, a message with the description of the commands is sent.
+	#
+	# After the search is done, the results are sent to the user and the task is finished.
+
+	def handle_chat_message(self, msg):
+
+		content_type, chat_type, chat_id = telepot.glance(msg, 'chat')
+
+		if content_type != 'text':
+			self.sendMessage(chat_id, 'You can only send me text messages, sorry!')
+			return None
+
+		self.sendMessage(chat_id, 'Thanks for your text!') # <-------------------------------------- Remove this after!
+
+		text_message = remove_emoji_from_text(msg[content_type])
+
+		text_message_list = text_message.split()
+		command = text_message_list[0]
+
+		if command == '/search' and len(text_message_list) > 1:
+			command_argument = text_message_list[1:]
+			print( command_argument )   # <-------------------------------------- Remove this after!
+			self.do_easy_search( command_argument ) # <----------------------------------------------------PUT try/except here!!!
+		elif command == '/advsearch' and len(text_message_list) == 1:
+			self.do_advanced_search()
+		elif command == '/help' and len(text_message_list) == 1:
+			self.get_help()
+		else:
+			self.sendMessage(chat_id, 'See the /help for information on this Bot!')
+
+		# COULD PUT THIS IN FILE, as a LOG!
+
+		print( content_type, chat_type, chat_id )   # <-------------------------------------- Remove this after!
+		print( text_message )   # <-------------------------------------- Remove this after!
+		print( text_message_list )   # <-------------------------------------- Remove this after!
+		print( command )   # <-------------------------------------- Remove this after!
+
+		# UNTIL HERE!
+
+		# Complete here!
+
+	# --- TO BE IMPLEMENTED ---
+
+	def handle_callback_query(self, msg):
+
+		message_id, from_id, message_data = telepot.glance(msg, 'callback_query')
+
+	def handle_inline_query(self, msg):
+
+		message_id, from_id, message_query = telepot.glance(msg, 'inline_query')
+
+	def handle_chosen_inline_result(self, msg):
+
+		result_id, from_id, message_query = telepot.glance(msg, 'chosen_inline_result')
+
+	def do_easy_search(self, argument):
+
+		try:
+			easy_search_link = al.simple_search(argument, self.arxiv_search_link)
+		except NoArgumentError:
+			self.sendMessage(chat_id, 'Please provide the arguments for the search.')
+			raise EasySearchError('The easy search failed.')
+		except:
+			self.sendMessage(chat_id, 'An unknown error occurred.')
+			raise EasySearchError('The easy search failed.')
+
+		print( easy_search_link )
+
+		# Complete here!
+
+		return None
+
+	def do_advanced_search(self):
+
+		return None
+
+	def get_help(self):
+
+		return None
+
+# -------------------------------
+
+# --- Main ---
+
+with open(os.path.join('Data','bot_details.yaml'), 'r') as file_input:
 	detail = yaml.load(file_input)
 
-bot = telepot.Bot(detail['token'])
+bot = ArxivBot(detail['token'])
 
-bot.message_loop(handle)
-print ('Listening ...')
-
-# Keep the program running.
-while 1:
-    time.sleep(10)
-
-# # ---- MY CLASS ----
-
-# # We create a class since we want to create a method for handle, not a function
-# class MyTestBot(telepot.Bot):
-
-# 	def __init__(self, *args, **kwargs):
-# 		super(MyTestBot, self).__init__(*args, **kwargs)
-
-# 	# Basic handle function, it print the message
-# 	def handle(self, msg):
-
-# 		# Check the flavor. At the moment, we accept only normal messages.
-# 		flavor = telepot.flavor(msg)
-
-# 		if flavor == 'normal':
-# 			# Use glance method to get the basic information
-# 			content_type, chat_type, chat_id = telepot.glance(msg)
-# 			print(msg)
-		
-# 			# Send back a text to say Hello
-# 			time.sleep(1)
-# 			self.sendMessage(chat_id, 'Hey mate!')
-	
-# 		else:
-# 			raise telepot.BadFlavor(msg)
-
-# # ---- MAIN ----
-
-# # Open the detail file with token, name of the bot, etc..
-# with open('detail.yaml', 'r') as fin:
-# 	detail = yaml.load(fin)
-
-# # Initialise the Bot
-# bot = MyTestBot(detail['token'])
-
-# # Use method notifyOnMessage, which take as agrument our function handle
-# bot.notifyOnMessage()
-
-# # while loop to run as deamon
-# while 1:
-# 	time.sleep(10)
+bot.message_loop(run_forever = True)
