@@ -125,7 +125,7 @@ def parse_response(response):
 
 def request_to_arxiv(arxiv_search_link):
 
-	if not isinstance(arxiv_search_link, str):
+	if not ( isinstance(arxiv_search_link, unicode) or isinstance(arxiv_search_link, str) ):
 		raise TypeError('The argument passed is not a string.')
 
 	# Making a query to the arxiv
