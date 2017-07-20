@@ -3,7 +3,7 @@ sys.path.append(os.path.abspath(os.path.join('..', 'Library')))
 
 from nose.tools import assert_raises, assert_equal
 import arxiv_lib as al
-from customised_exceptions import NoArgumentError, GetRequestError
+from customised_exceptions import NoArgumentError, GetRequestError,NoCategoryError
 from subprocess import check_call
 import requests
 import time
@@ -91,6 +91,86 @@ def test_simple_search_correctness_unicode_list():
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
+#  COSTUMISED NUMBER OF RESULTS TEST
+
+# Test that the function specify_number_of_results raises a ValueError when a negative number of results is passed
+def test_specify_number_of_results_negative():
+
+	link = 'http://export.arxiv.org/api/query?search_query=all:electron'
+	number_of_results = -1
+
+	with assert_raises(ValueError):
+		al.specify_number_of_results(link, number_of_results)
+
+# Test that the function specify_number_of_results raises a ValueError when a negative number of results is passed
+def test_specify_number_of_results_correct():
+
+	link = 'http://export.arxiv.org/api/query?search_query=all:electron'
+	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron&max_results=15'
+	number_of_results = 15
+
+	obtained_link = al.specify_number_of_results(link, number_of_results)
+
+	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
+
+#  TODAY'S SUBMISSIONS TEST
+
+# Test that the time range we use is the same of the arxiv (checked at https://arxiv.org/help/submit#availability)
+def test_time_range_for_today_search():
+
+	time_information = [time.strptime('Wed 19 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
+						time.strptime('Thu 20 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
+						time.strptime('Fri 21 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
+						time.strptime('Sat 22 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
+						time.strptime('Sun 23 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
+						time.strptime('Mon 24 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
+						time.strptime('Tue 25 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
+						]
+	expected_results = ['submittedDate:[201707171800+TO+201707181800]',
+					    'submittedDate:[201707181800+TO+201707191800]',
+					    'submittedDate:[201707191800+TO+201707201800]',
+					    'submittedDate:[201707191800+TO+201707201800]',
+					    'submittedDate:[201707191800+TO+201707201800]',
+					    'submittedDate:[201707201800+TO+201707211800]',
+					    'submittedDate:[201707211800+TO+201707241800]'
+					    ]
+
+	for time_info, expected_result in zip(time_information, expected_results):
+
+		obtained_result = al.time_range_for_today_search(time_info)
+		assert_equal(obtained_result, expected_result, "The obtained time range is different from the expected one")
+
+# Test on the function category_exists
+def test_category_exists_correct():
+
+	existing_category = 'cs.GT'
+	non_existing_category = 'not.cat'
+
+	assert_equal( al.category_exists( existing_category ), True, "The obtained boolean is different from the expected one")
+	assert_equal( al.category_exists( non_existing_category ), False, "The obtained boolean is different from the expected one")
+
+# Test if search_day_submissions raises error for wrong category
+def test_search_day_submissions_wrong_category():
+
+	link = 'http://export.arxiv.org/api/query?search_query=all:electron'
+	time_information = time.strptime('Wed 19 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
+	non_existing_category = 'not.cat'
+
+	with assert_raises(NoCategoryError):
+		al.search_day_submissions(time_information, non_existing_category, link)
+
+# Test if search_day_submissions returns the expected link for the search
+def test_search_day_submissions_correct():
+
+	link = 'http://export.arxiv.org/api/query?search_query='
+	time_information = time.strptime('Wed 19 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
+	arxiv_category = 'math.DS'
+
+	expected_result = 'http://export.arxiv.org/api/query?search_query=cat:math.DS+AND+submittedDate:[201707171800+TO+201707181800]'
+	obtained_result = al.search_day_submissions(time_information, arxiv_category, link)
+
+	assert_equal( obtained_result, expected_result, "The obtained link is different from the expected one")
+
 # REQUEST TO ARXIV TESTS
 
 # When anything but a string is passed to the al.request_to_arxiv it needs to rise error (TypeError)
@@ -156,6 +236,50 @@ def test_parse_response_correct():
 	assert_equal(abstract_obtained, expected_abstract, "The obtained response is different from the expected one")
 
 	return 0
+
+# REVIEW FEED TESTS
+
+# Tests that the method total_number_results raises error if it does not receive a dictionary
+def test_total_number_results_wrong_argument():
+
+	not_dictionary = 'This is a string'
+
+	with assert_raises(TypeError):
+			al.total_number_results(not_dictionary)
+	
+# Tests that the method total_number_results raises error if dictionary has no key 'feed'
+def test_total_number_results_no_feed():
+
+	dictionary = {'key1' : 1 , 'key2' : 'hello'}
+
+	with assert_raises(NoArgumentError):
+			al.total_number_results(dictionary)
+
+# Tests that the method total_number_results raises error if dictionary has the key 'feed', but it is not a dict
+def test_total_number_results_wrong_feed():
+
+	dictionary = {'key1' : 1 , 'key2' : 'hello', 'feed' : 'this is a string'}
+
+	with assert_raises(TypeError):
+			al.total_number_results(dictionary)
+
+# Tests that the method total_number_results raises error if dictionary does not has the key 'totalresults'
+def test_total_number_results_no_totalresults():
+
+	dictionary = {'key1' : 1 , 'key2' : 'hello', 'feed' : {'key3' : True}}
+
+	with assert_raises(NoArgumentError):
+			al.total_number_results(dictionary)
+
+# Tests that the method total_number_results returns the correct value
+def test_total_number_results_correct():
+
+	dictionary = {'key1' : 1 , 'key2' : 'hello', 'feed' : {'opensearch_totalresults' : u'13'}}
+
+	obtained_result = al.total_number_results(dictionary)
+	expected_result = 13
+
+	assert_equal(obtained_result, expected_result, "The obtained number is different from the expected one")
 
 # REVIEW RESPONSE TESTS
 

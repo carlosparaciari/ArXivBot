@@ -4,7 +4,7 @@ import time
 import os
 import arxiv_lib as al
 import emoji_detect as emjd
-from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, EasySearchError
+from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, NoCategoryError
 
 # Class ArxivBot inherits from the telepot.Bot class.
 # The calss is used to deal with the messaged recived by the bot on Telegram,
@@ -18,8 +18,15 @@ class ArxivBot(telepot.Bot):
 
 		super(ArxivBot, self).__init__(*args, **kwargs)
 		self.arxiv_search_link = 'http://export.arxiv.org/api/query?search_query='
-		self.errors_log_file = os.path.join('LogFiles', 'errors.log')
-		self.message_log_file = os.path.join('LogFiles', 'chat_recorder.log')
+		self.max_result_number = 50
+		self.max_characters_chat = 4096
+
+	# The method allows for the injection of the filenames of the error and chat logs
+
+	def set_log_files(self, errors_file_name, message_log_file):
+
+		self.errors_log_file = errors_file_name
+		self.message_log_file = message_log_file
 
 	# The handle method receives the message sent by the user and processes it depending
 	# on the different "flavor" associated to it.
@@ -74,38 +81,30 @@ class ArxivBot(telepot.Bot):
 
 		if command == '/search' and len(text_message_list) > 1:
 			command_argument = text_message_list[1:]
-			self.do_easy_search( command_argument , chat_id)
+			self.do_easy_search( command_argument , chat_id )
+		elif command == '/today' and len(text_message_list) == 2:
+			command_argument = text_message_list[1]
+			self.do_today_search( command_argument , chat_id )
 		elif command == '/advsearch' and len(text_message_list) == 1:
 			self.do_advanced_search()
+		elif command == '/feedback' and len(text_message_list) == 1:
+			self.give_feedback()
 		elif command == '/help' and len(text_message_list) == 1:
 			self.get_help()
 		else:
 			self.sendMessage(chat_id, u'See the /help for information on this Bot!')
 
-		# COULD PUT THIS IN FILE, as a LOG!
-
-		print( content_type, chat_type, chat_id )   # <-------------------------------------- Remove this after!
-		print( text_message )   # <-------------------------------------- Remove this after!
-		print( text_message_list )   # <-------------------------------------- Remove this after!
-		print( command )   # <-------------------------------------- Remove this after!
-
-		# UNTIL HERE!
-
-		# Complete here!
-
-	# --- TO BE IMPLEMENTED ---
-
-	def handle_callback_query(self, msg):
-
-		message_id, from_id, message_data = telepot.glance(msg, 'callback_query')
-
-	def handle_inline_query(self, msg):
-
-		message_id, from_id, message_query = telepot.glance(msg, 'inline_query')
-
-	def handle_chosen_inline_result(self, msg):
-
-		result_id, from_id, message_query = telepot.glance(msg, 'chosen_inline_result')
+	# The do_easy_search method is used when the user calls the /search command.
+	# The methods takes as input
+	#
+	# - The argument of the search, a list of unicode strings (text) which define the search
+	# - The identity of the chat, so as to be able to answer the call
+	#
+	# The method composes the arxiv link to which the requests is sent, makes a requests to
+	# the website, parses the results, and sends them to the user.
+	#
+	# NOTICE : No more than 10 results are shown due to the limitations on the screen of mobilephones.
+	# 		   The user is nevertheless advised to refine the search if more than 10 results are obtained.
 
 	def do_easy_search(self, argument, chat_identity):
 
@@ -119,8 +118,84 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.single_search')
 			return None
 
+		self.search_and_reply( easy_search_link, chat_identity )
+
+		return None
+
+	# The do_today_search method is used when the user calls the /today command.
+	# It search for the papers of the day in a given category of the arxiv.
+	# The methods takes as input
+	#
+	# - The arxiv category we are interested in (ONLY one category for limiting the number of results)
+	# - The identity of the chat, so as to be able to answer the call
+	#
+	# The method composes the arxiv link to which the requests is sent, makes a requests to
+	# the website, parses the results, and sends them to the user.
+	#
+	# NOTICE : Only for this kind of search, we allow for a maximum of 50 results.
+	# 		   If more results are presents, the user is notified.
+
+	def do_today_search(self, arxiv_category , chat_identity):
+
+		today_time_GMT = time.gmtime()
+
 		try:
-			easy_search_response = al.request_to_arxiv(easy_search_link)
+			today_search_link = al.search_day_submissions(today_time_GMT, arxiv_category, self.arxiv_search_link)
+		except NoCategoryError:
+			self.sendMessage(chat_identity, u'Please use an ArXiv subject. See https://arxiv.org/help/api/user-manual for further information.')
+			return None
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.search_day_submissions')
+			return None
+
+		self.search_and_reply( today_search_link, chat_identity, self.max_result_number )
+
+		return None
+
+	# Advanced search (I am not sure if it makes sense to implement it)
+
+	def do_advanced_search(self):
+
+		return None
+
+	# ------------ TO BE IMPLEMENTED NEXT ---------------
+
+	# This method return the email address where the user can submit a feedback
+	def give_feedback(self):
+
+		return None
+
+	# The method get_help provide some useful information about the Bot to the user
+
+	def get_help(self):
+
+		return None
+
+	# The search_and_reply method is used in the other search methods to
+	# send the request to the arxiv, parse the result, and send it to the
+	# user.
+	# The methods takes as input
+	#
+	# - The arxiv link for the request
+	# - The identity of the chat, so as to be able to answer the call
+	# - The maximum number of result to be displayed (by default this is 10)
+
+	def search_and_reply(self, search_link, chat_identity, max_number = 10):
+
+		try:
+			search_link = al.specify_number_of_results(search_link, max_number)
+		except ValueError as VE:
+			self.sendMessage(chat_identity, u'The number of shown results cannot be negative.')
+			self.save_known_error_log(chat_identity, VE)
+			return None
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.specify_number_of_results')
+			return None
+
+		try:
+			search_response = al.request_to_arxiv(search_link)
 		except TypeError as TE:
 			self.sendMessage(chat_identity, u'The url got corrupted. Try again!')
 			self.save_known_error_log(chat_identity, TE)
@@ -139,7 +214,7 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		try:
-			easy_search_dictionary = al.parse_response(easy_search_response)
+			search_dictionary = al.parse_response(search_response)
 		except TypeError as TE:
 			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
 			self.save_known_error_log(chat_identity, TE)
@@ -150,7 +225,7 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		try:
-			easy_search_list = al.review_response( easy_search_dictionary )
+			search_list = al.review_response( search_dictionary )
 		except NoArgumentError:
 			self.sendMessage(chat_identity, u'No result has been found for your search. Try again!')
 			return None
@@ -163,28 +238,56 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.parse_response')
 			return None
 
-		self.send_results_back(chat_identity, easy_search_list)
+		try:
+			total_results = al.total_number_results( search_dictionary )
+			remaining_results = total_results - max_number
+		except NoArgumentError as NAE:
+			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+			self.save_known_error_log(chat_identity, NAE)
+			return None
+		except TypeError as TE:
+			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+			self.save_known_error_log(chat_identity, TE)
+			return None
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
+			return None
+
+		self.send_results_back(chat_identity, search_list, remaining_results)
 
 		return None
 
-	def do_advanced_search(self):
+	# The method send_results_back format the result of the searh and send it to the user.
+	#
+	# NOTICE: Telegram does not allow for sending messages bigger than 4096 characters,
+	#         so the method cut the message into chucks if the total number of characters is bigger. 
 
-		return None
-
-	def get_help(self):
-
-		return None
-
-	def send_results_back(self, chat_identity, search_list):
+	def send_results_back(self, chat_identity, search_list, remaining_results):
 
 		result_counter = 1
 		message_result = ''
 
 		for result in search_list:
-			message_result += '<b>'+str(result_counter)+u'</b>. <em>'+result['title']+u'</em>\n'+result['authors']+u'\n\n'+result['link']+u'\n\n'
+			new_item = '<b>'+str(result_counter)+'</b>. <em>'+result['title']+'</em>\n'+result['authors']+'\n'+result['link']+'\n\n'
+			message_would_exceed = len(message_result) + len(new_item) >= self.max_characters_chat
+			if message_would_exceed:
+				self.sendMessage(chat_identity, message_result, parse_mode='HTML')
+				message_result = ''
+			message_result += new_item
 			result_counter += 1
+		
+		if remaining_results > 0:
+			remaining_information = 'There are ' + str(remaining_results) + ' unshown results.\nConsider refining your search, or visit the Arxiv webpage.'
+			message_would_exceed = len(message_result) + len(remaining_information) >= self.max_characters_chat
+			if message_would_exceed:
+				self.sendMessage(chat_identity, message_result, parse_mode='HTML')
+				message_result = remaining_information
+			message_result += remaining_information
 
 		self.sendMessage(chat_identity, message_result, parse_mode='HTML')
+
+	# Saves the details of the message (who, what) in a log file for statistical pourpouses
 
 	def save_message_details_log(self, chat_identity, content_type):
 
@@ -193,11 +296,15 @@ class ArxivBot(telepot.Bot):
 		with open(self.message_log_file, 'a') as msglog:
 			msglog.write(message_string)
 
+	# Saves the content of the message in a log file for statistical pourpouses
+
 	def save_message_content_log( self, text_message ):
 
 		message_string = text_message+u'\n'
 		with open(self.message_log_file, 'a') as msglog:
 			msglog.write(message_string.encode('utf8'))
+
+	# Saves the unknown errors in a log file for bug fixing pourposes
 
 	def save_unknown_error_log(self, chat_identity, in_function):
 
@@ -206,10 +313,26 @@ class ArxivBot(telepot.Bot):
 		with open(self.errors_log_file, 'a') as errlog:
 			errlog.write(error_string)
 
+	# Saves the known errors in a log file for bug fixing pourposes
+
 	def save_known_error_log(self, chat_identity, raised_exception):
 
 		error_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
-		error_string = error_time+' - '+str(chat_identity)+' - '+str(type(raised_exception))+' - '+str(raised_exception.args)+'\n'
+		error_string = error_time+' - '+str(chat_identity)+' - '+str(type(raised_exception))+' - '+raised_exception.args[0]+'\n'
 		with open(self.errors_log_file, 'a') as errlog:
 			errlog.write(error_string)
+
+	# --- TO BE IMPLEMENTED (MAYBE) ---
+
+	def handle_callback_query(self, msg):
+
+		message_id, from_id, message_data = telepot.glance(msg, 'callback_query')
+
+	def handle_inline_query(self, msg):
+
+		message_id, from_id, message_query = telepot.glance(msg, 'inline_query')
+
+	def handle_chosen_inline_result(self, msg):
+
+		result_id, from_id, message_query = telepot.glance(msg, 'chosen_inline_result')
 		

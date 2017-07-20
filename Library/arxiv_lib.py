@@ -1,6 +1,25 @@
-from customised_exceptions import NoArgumentError, GetRequestError, UnknownError
+from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, NoCategoryError
 import requests
 import feedparser
+import sys, os
+import today_lib as tl
+
+# MODULE-SCOPE VARIABLE
+
+ALL_CATEGORIES = ['stat.AP', 'stat.CO', 'stat.ML', 'stat.ME', 'stat.TH', 'q-bio.BM', 'q-bio.CB', 'q-bio.GN', 'q-bio.MN', 'q-bio.NC', 'q-bio.OT',
+				  'q-bio.PE', 'q-bio.QM', 'q-bio.SC', 'q-bio.TO', 'cs.AR', 'cs.AI', 'cs.CL', 'cs.CC', 'cs.CE', 'cs.CG', 'cs.GT', 'cs.CV', 'cs.CY',
+				  'cs.CR', 'cs.DS', 'cs.DB', 'cs.DL', 'cs.DM', 'cs.DC', 'cs.GL', 'cs.GR', 'cs.HC', 'cs.IR', 'cs.IT', 'cs.LG', 'cs.LO', 'cs.MS',
+				  'cs.MA', 'cs.MM', 'cs.NI', 'cs.NE', 'cs.NA', 'cs.OS', 'cs.OH', 'cs.PF', 'cs.PL', 'cs.RO', 'cs.SE', 'cs.SD', 'cs.SC', 'nlin.AO',
+				  'nlin.CG', 'nlin.CD', 'nlin.SI', 'nlin.PS', 'math.AG', 'math.AT', 'math.AP', 'math.CT', 'math.CA', 'math.CO', 'math.AC', 'math.CV',
+				  'math.DG', 'math.DS', 'math.FA', 'math.GM', 'math.GN', 'math.GT', 'math.GR', 'math.HO', 'math.IT', 'math.KT', 'math.LO', 'math.MP',
+				  'math.MG', 'math.NT', 'math.NA', 'math.OA', 'math.OC', 'math.PR', 'math.QA', 'math.RT', 'math.RA', 'math.SP', 'math.ST', 'math.SG',
+				  'astro-ph', 'cond-mat.dis-nn', 'cond-mat.mes-hall', 'cond-mat.mtrl-sci', 'cond-mat.other', 'cond-mat.soft', 'cond-mat.stat-mech',
+				  'cond-mat.str-el', 'cond-mat.supr-con', 'gr-qc', 'hep-ex', 'hep-lat', 'hep-ph', 'hep-th', 'math-ph', 'nucl-ex', 'nucl-th',
+				  'physics.acc-ph', 'physics.ao-ph', 'physics.atom-ph', 'physics.atm-clus', 'physics.bio-ph', 'physics.chem-ph', 'physics.class-ph',
+				  'physics.comp-ph', 'physics.data-an', 'physics.flu-dyn', 'physics.gen-ph', 'physics.geo-ph', 'physics.hist-ph', 'physics.ins-det',
+				  'physics.med-ph', 'physics.optics', 'physics.ed-ph', 'physics.soc-ph', 'physics.plasm-ph', 'physics.pop-ph', 'physics.space-ph', 'quant-ph']
+
+# MODULE METHODS
 
 # Review response, it will review the dictionary obtained from parse_response
 # and pass the following information for each entries:
@@ -28,7 +47,7 @@ def review_response(dictionary):
 
 	for entry in dictionary['entries']:
 
-		if not isinstance(entry,dict):
+		if not isinstance(entry, dict):
 			raise TypeError('One of the entries is corrupted.')
 
 		# Only write the important data in the dictionary
@@ -47,6 +66,27 @@ def review_response(dictionary):
 		raise NoArgumentError('No entries have been found during the search.')
 	
 	return results_list
+
+# This function returns the total number of results of the search
+def total_number_results(dictionary):
+
+	if not isinstance(dictionary, dict):
+		raise TypeError('The argument passed is not a dictionary.')
+
+	feed_information = is_field_there(dictionary, 'feed')
+
+	if feed_information == None:
+		raise NoArgumentError('No feed have been returned by the search.')
+
+	if not isinstance(feed_information, dict):
+		raise TypeError('The field feed is corrupted.')
+
+	total_results = is_field_there(feed_information, 'opensearch_totalresults')
+
+	if total_results == None:
+		raise NoArgumentError('The feed got corrupted.')
+
+	return int(total_results)
 
 # This function is needed for the review_response.
 # It checks that the dictionary has something associated to the key, and if not, it returns None
@@ -145,6 +185,72 @@ def request_to_arxiv(arxiv_search_link):
 		raise connection_error
 	else:
 		return response
+
+# The function adds to the arxiv link an extra field, which specifies
+# the number of results we want to obtain. It output the link with
+# at the end the new specification
+
+def specify_number_of_results(arxiv_search_link, number_of_results):
+
+	if number_of_results < 0:
+		raise ValueError('The number of results you are interested in cannot be negative.')
+
+	arxiv_search_link += '&max_results=' + str(number_of_results)
+
+	return arxiv_search_link
+
+# The function provides the correct time range for checking daily submissions.
+# The input is a GMT time step, and the output depends on the rules about
+# submission of the arxiv (see https://arxiv.org/help/submit#availability).
+# The output is a string which can be added to the request link to arxiv for
+# checking the new submissions.
+
+def time_range_for_today_search(time_information):
+
+	current_weekday = tl.which_weekday(time_information)
+	submission_range = 'submittedDate:['
+	deadline_submission = '1800'
+
+	if current_weekday == 'Mon':
+		initial_date = tl.move_current_date(-4, time_information)
+		final_date = tl.move_current_date(-3, time_information)
+	elif current_weekday == 'Tue':
+		initial_date = tl.move_current_date(-4, time_information)
+		final_date = tl.move_current_date(-1, time_information)		
+	elif current_weekday == 'Wed' or current_weekday == 'Thu' or current_weekday == 'Fri':
+		initial_date = tl.move_current_date(-2, time_information)
+		final_date = tl.move_current_date(-1, time_information)
+	elif current_weekday == 'Sat':
+		initial_date = tl.move_current_date(-3, time_information)
+		final_date = tl.move_current_date(-2, time_information)
+	elif current_weekday == 'Sun':
+		initial_date = tl.move_current_date(-4, time_information)
+		final_date = tl.move_current_date(-3, time_information)
+
+	submission_range += initial_date + deadline_submission + '+TO+' + final_date + deadline_submission + ']'
+
+	return submission_range
+
+# This function search the submissions which were available to the users on the date
+# specified by the time_information, in a given category (e.g. quant-ph) specified by
+# subject_category. The function returns the arxiv link for the search.
+
+def search_day_submissions(time_information, subject_category, arxiv_search_link):
+
+	if not category_exists(subject_category):
+		raise NoCategoryError('The passed category is not in the ArXiv')
+
+	time_range = time_range_for_today_search(time_information)
+	arxiv_search_link += 'cat:' + subject_category + '+AND+' + time_range
+
+	return arxiv_search_link
+
+# This function checks whether the subject_category is an existing category of the arxiv,
+# and returns a boolean accordingly
+
+def category_exists(subject_category):
+
+	return subject_category in ALL_CATEGORIES
 
 # Advanced search the arxiv.
 #
