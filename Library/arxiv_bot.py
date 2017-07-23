@@ -2,6 +2,7 @@ import telepot
 import requests
 import time
 import os
+import random
 import arxiv_lib as al
 import emoji_detect as emjd
 from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, NoCategoryError
@@ -19,6 +20,7 @@ class ArxivBot(telepot.Bot):
 		super(ArxivBot, self).__init__(*args, **kwargs)
 		self.arxiv_search_link = 'http://export.arxiv.org/api/query?search_query='
 		self.max_result_number = 50
+		self.max_number_authors = 5
 		self.max_characters_chat = 4096
 		self.arxiv_fair_time = 3
 
@@ -143,7 +145,7 @@ class ArxivBot(telepot.Bot):
 		try:
 			today_search_link = al.search_day_submissions(today_time_GMT, arxiv_category, self.arxiv_search_link)
 		except NoCategoryError:
-			self.sendMessage(chat_identity, u'Please use the ArXiv subjects.\nSee https://arxiv.org/help/api/user-manual for further information.')
+			self.sendMessage(chat_identity, u'Please use the arXiv subjects.\nSee https://arxiv.org/help/api/user-manual for further information.')
 			return None
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -174,7 +176,24 @@ class ArxivBot(telepot.Bot):
 
 	def get_help(self, chat_identity ):
 
-		message = u"Search for papers on the ArXiv with this bot. Search papers using some keywords, or check the new submissions to your favourite category, and share the results easily. With ArXivBot you can\n\n- make a /search using some keywords\n    <i>e.g. /search atom 2017</i>\n\n- look at what's going on /today in the ArXiv\n    <i>e.g. /today quant-ph</i>\n\n- send us your /feedback\n    <i>e.g. /feedback I like this bot!</i>\n\nEnjoy your search! \U0001F609"
+		random_category = random.randint( 0, al.number_categories() - 1 )
+
+		try:
+			example_category = al.single_category(random_category)
+		except TypeError as TE:
+			self.sendMessage(chat_identity, u'We are experiencing some technical problems, sorry!')
+			self.save_known_error_log(chat_identity, TE)
+			return None
+		except IndexError as IE:
+			self.sendMessage(chat_identity, u'We are experiencing some technical problems, sorry!')
+			self.save_known_error_log(chat_identity, IE)
+			return None
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.specify_number_of_results')
+			return None
+
+		message = u"Search for papers on the arXiv with this bot. Search papers using some keywords, or check the new submissions to your favourite category, and share the results easily. With ArXivBot you can\n\n- make a /search using some keywords\n    <i>e.g. /search atom 2017</i>\n\n- look at what's going on /today in the arXiv\n    <i>e.g. /today " + example_category + u"</i>\n\n- send us your /feedback\n    <i>e.g. /feedback I like this bot!</i>\n\nEnjoy your search! \U0001F609"
 		self.sendMessage(chat_identity, message, parse_mode='HTML')
 
 		return None
@@ -208,7 +227,7 @@ class ArxivBot(telepot.Bot):
 			self.save_known_error_log(chat_identity, TE)
 			return None
 		except GetRequestError as GRE:
-			self.sendMessage(chat_identity, u'The search arguments are fine, but the search on the ArXiv failed.')
+			self.sendMessage(chat_identity, u'The search arguments are fine, but the search on the arXiv failed.')
 			self.save_known_error_log(chat_identity, GRE)
 			return None
 		except requests.exceptions.HTTPError as HTTPE:
@@ -232,13 +251,17 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		try:
-			search_list = al.review_response( search_dictionary )
+			search_list = al.review_response( search_dictionary , self.max_number_authors )
 		except NoArgumentError:
 			self.sendMessage(chat_identity, u'No result has been found for your search. Try again!')
 			return None
 		except TypeError as TE:
 			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
 			self.save_known_error_log(chat_identity, TE)
+			return None
+		except ValueError as VE:
+			self.sendMessage(chat_identity, u'We are experiencing some technical problems, sorry!')
+			self.save_known_error_log(chat_identity, VE)
 			return None
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -286,7 +309,7 @@ class ArxivBot(telepot.Bot):
 			remaining_information = 'There are ' + str(remaining_results) + ' unshown results.\nConsider refining your search, or visit the Arxiv webpage.'
 			message_result = self.check_size_and_split_message(message_result, remaining_information, chat_identity)
 
-		self.sendMessage(chat_identity, message_result, parse_mode='HTML')
+		self.send_message_safely( message_result, chat_identity )
 
 	# The methods checks the lenght of the message and divides it if the max number of characters is exceeded.
 
@@ -294,11 +317,24 @@ class ArxivBot(telepot.Bot):
 
 		message_would_exceed = len(message) + len(new_item) >= self.max_characters_chat
 		if message_would_exceed:
-			self.sendMessage(chat_identity, message, parse_mode='HTML')
+			self.send_message_safely( message, chat_identity )
 			message = ''
 		message += new_item
 
 		return message
+
+	# Send message safely
+
+	def send_message_safely(self, message, chat_identity):
+
+		try:
+			self.sendMessage(chat_identity, message, parse_mode='HTML')
+		except TelegramError as TeleE:
+			self.sendMessage(chat_identity, u"Telegram is messing around with the results, we'll have a look into this. Sorry!")
+			self.save_known_error_log(chat_identity, TeleE)
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
 
 	# Saves the feedback message in a log file
 
@@ -310,7 +346,7 @@ class ArxivBot(telepot.Bot):
 			fblog.write(message_string)
 
 
-	# Saves the details of the message (who, what) in a log file for statistical pourpouses
+	# Saves the details of the message (who, what) in a log file for statistical purposes
 
 	def save_message_details_log(self, chat_identity, content_type):
 
@@ -319,7 +355,7 @@ class ArxivBot(telepot.Bot):
 		with open(self.message_log_file, 'a') as msglog:
 			msglog.write(message_string)
 
-	# Saves the content of the message in a log file for statistical pourpouses
+	# Saves the content of the message in a log file for statistical purposes
 
 	def save_message_content_log( self, text_message ):
 
@@ -327,7 +363,7 @@ class ArxivBot(telepot.Bot):
 		with open(self.message_log_file, 'a') as msglog:
 			msglog.write(message_string.encode('utf8'))
 
-	# Saves the unknown errors in a log file for bug fixing pourposes
+	# Saves the unknown errors in a log file for bug fixing purposes
 
 	def save_unknown_error_log(self, chat_identity, in_function):
 
@@ -336,7 +372,7 @@ class ArxivBot(telepot.Bot):
 		with open(self.errors_log_file, 'a') as errlog:
 			errlog.write(error_string)
 
-	# Saves the known errors in a log file for bug fixing pourposes
+	# Saves the known errors in a log file for bug fixing purposes
 
 	def save_known_error_log(self, chat_identity, raised_exception):
 
@@ -345,7 +381,7 @@ class ArxivBot(telepot.Bot):
 		with open(self.errors_log_file, 'a') as errlog:
 			errlog.write(error_string)
 
-	# --- TO BE IMPLEMENTED (MAYBE) ---
+	# --- TO BE IMPLEMENTED IN THE FUTURE (MAYBE) ---
 
 	def handle_callback_query(self, msg):
 
@@ -360,5 +396,7 @@ class ArxivBot(telepot.Bot):
 		result_id, from_id, message_query = telepot.glance(msg, 'chosen_inline_result')
 		
 	# Advanced search (the method can be implemented but does not seem to fit into the design of the Bot)
-	# def do_advanced_search(self):
-	# 	return None
+
+	def do_advanced_search(self):
+		
+		return None

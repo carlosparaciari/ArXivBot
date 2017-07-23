@@ -91,7 +91,39 @@ def test_simple_search_correctness_unicode_list():
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
-#  COSTUMISED NUMBER OF RESULTS TEST
+# SINGLE CATEGORY TEST
+
+# Test that the function single_category raises an exception when it does not receive an integer
+def test_single_category_not_integer():
+
+	wrong_argument = 'this is a string'
+
+	with assert_raises(TypeError):
+		al.single_category(wrong_argument)
+
+# Test that the function single_category raises an exception when the argument is not between 0 and len(ALL_CATEGORIES)
+def test_single_category_wrong_index():
+
+	wrong_index_neg = -1
+	wrong_index_pos = al.number_categories()
+
+	with assert_raises(IndexError):
+		al.single_category(wrong_index_neg)
+
+	with assert_raises(IndexError):
+		al.single_category(wrong_index_pos)
+
+# Test that the function single_category works correctly
+def test_single_category_correct():
+
+	correct_indices = [0, 3, al.number_categories() - 1]
+	expected_results = ['stat.AP', 'stat.ME', 'quant-ph']
+
+	for ind, expected_result in zip(correct_indices, expected_results):
+		obtained_result = al.single_category(ind)
+		assert_equal(obtained_result, expected_result, "The obtained result is different from the expected one")
+
+# COSTUMISED NUMBER OF RESULTS TEST
 
 # Test that the function specify_number_of_results raises a ValueError when a negative number of results is passed
 def test_specify_number_of_results_negative():
@@ -283,14 +315,33 @@ def test_total_number_results_correct():
 
 # REVIEW RESPONSE TESTS
 
-# when the argument of review response is not a dictionary, need to return error
+# when the max number of authors of review response is not an int, needs to return error
+def test_review_response_wrong_number_type():
+
+	dictionary = {'a' : 1, 'entries' : [{ 'key1' : 1, 'key2' : 2}, { 'key3' : 3, 'key4' : 4}]}
+	max_number = 'this is a string'
+
+	with assert_raises(TypeError):
+		al.review_response(dictionary, max_number)
+
+# when the max number of authors of review response is not bigger or equal to 1, needs to return error
+def test_review_response_wrong_number_type():
+
+	dictionary = {'a' : 1, 'entries' : [{ 'key1' : 1, 'key2' : 2}, { 'key3' : 3, 'key4' : 4}]}
+	max_numbers = [-1, 0]
+
+	for max_number in max_numbers:
+		with assert_raises(ValueError):
+			al.review_response(dictionary, max_number)
+
+# when the argument of review response is not a dictionary, needs to return error
 def test_review_response_wrong_argument():
 
 	possible_arguments = [1, 1., [1, 'a'], False]
 
 	for arg in possible_arguments:
 		with assert_raises(TypeError):
-			al.review_response(arg)
+			al.review_response(arg, 100)
 
 # when the dictionary does not have the field 'entries'
 def test_review_response_no_entries():
@@ -298,7 +349,7 @@ def test_review_response_no_entries():
 	dictionary = {'a' : 1 , 'b' : 'hi'}
 
 	with assert_raises(NoArgumentError):
-		al.review_response(dictionary)
+		al.review_response(dictionary, 100)
 
 # when the dictionary has the field 'entries', but is not a list
 def test_review_response_entries_no_list():
@@ -306,7 +357,7 @@ def test_review_response_entries_no_list():
 	dictionary = {'a' : 1 , 'b' : 'hi' , 'entries' : 'this is not a list'}
 
 	with assert_raises(TypeError):
-		al.review_response(dictionary)
+		al.review_response(dictionary, 100)
 
 # when the dictionary has the field 'entries', it is a list, but not a list of dictionaries
 def test_review_response_entries__list_no_dictionary():
@@ -314,7 +365,7 @@ def test_review_response_entries__list_no_dictionary():
 	dictionary = {'a' : 1 , 'b' : 'hi' , 'entries' : [1,2,3]}
 
 	with assert_raises(TypeError):
-		al.review_response(dictionary)
+		al.review_response(dictionary, 100)
 
 # when the dictionary has the field 'entries', and is a list of dictionaries, and one entry is correct
 def test_review_response_correct():
@@ -330,7 +381,7 @@ def test_review_response_correct():
 				  			   	'animal' : 'Frog'}
 				  			  ]}
 
-	result_list = al.review_response(dictionary)
+	result_list = al.review_response(dictionary, 100)
 
 	expected_list = [{'title' : u'Nice Title', 'authors' : u'Carlo', 'year' : u'1992', 'link' : 'www.hi.com'}]
 
@@ -345,7 +396,7 @@ def test_review_response_correct_from_link():
 	response = al.request_to_arxiv(link)
 	parsed_response = al.parse_response(response)
 
-	result_list = al.review_response(parsed_response)
+	result_list = al.review_response(parsed_response, 100)
 
 	expected_list = {'link': u'http://arxiv.org/abs/0806.3233v1',
 					 'authors': u"Anatoly Yu. Smirnov, Sergey E. Savel'ev, Franco Nori",
@@ -423,7 +474,7 @@ def test_compact_authors_no_entry():
 
 	dictionary = {'a' : 1 , 'b' : 'hi'}
 
-	element = al.compact_authors(dictionary)
+	element = al.compact_authors(dictionary, 100)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
@@ -432,7 +483,7 @@ def test_compact_authors_no_list():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : 2}
 
-	element = al.compact_authors(dictionary)
+	element = al.compact_authors(dictionary, 100)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
@@ -441,7 +492,7 @@ def test_compact_authors_no_name():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : [{'c' : 1},{'d' : False}] }
 
-	element = al.compact_authors(dictionary)
+	element = al.compact_authors(dictionary, 100)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
@@ -450,7 +501,7 @@ def test_compact_authors_no_strings():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : [{'name' : 1},{'name' : False}] }
 
-	element = al.compact_authors(dictionary)
+	element = al.compact_authors(dictionary, 100)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
@@ -466,11 +517,31 @@ def test_compact_authors_correct():
 							  ]
 			     }
 
-	element = al.compact_authors(dictionary)
+	element = al.compact_authors(dictionary, 100)
 
 	expected_element = unicode('Carlo Sparaciari, Thomas Galley' , "utf-8")
 
 	assert_equal(element, expected_element, "The obtained response is different from the expected one")
+
+# when the authors are more than expected, cut the list and replace with 'et al.'
+
+def test_compact_authors_cut_number():
+
+	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : [{'name' : unicode('Carlo Sparaciari', "utf-8")},
+							   						 {'name' : unicode('Thomas Galley', "utf-8")},
+							  						 {'name' : unicode('Cameron Deans', "utf-8")}
+							  						]
+			      }
+
+	expected_strings = [unicode('Carlo Sparaciari, et al.' , "utf-8"),
+						unicode('Carlo Sparaciari, Thomas Galley, et al.' , "utf-8"),
+						unicode('Carlo Sparaciari, Thomas Galley, Cameron Deans' , "utf-8")
+					   ]
+
+	max_number_authors = range(1,4)
+	for expected_string, max_number in zip(expected_strings, max_number_authors):
+		obtained_string = al.compact_authors(dictionary, max_number)
+		assert_equal(expected_string, obtained_string, "The obtained string is different from the expected one")
 
 # FIND YEAR TESTS
 

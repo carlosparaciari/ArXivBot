@@ -21,6 +21,24 @@ ALL_CATEGORIES = ['stat.AP', 'stat.CO', 'stat.ML', 'stat.ME', 'stat.TH', 'q-bio.
 
 # MODULE METHODS
 
+# This method returns the number of available arxiv categories
+
+def number_categories():
+
+	return len( ALL_CATEGORIES )
+
+# This method takes an integer i and returns the i-th category in the list ALL_CATEGORY
+
+def single_category(category_index):
+
+	if not isinstance(category_index, int):
+		raise TypeError('The index is not an integer.')
+
+	if category_index < len( ALL_CATEGORIES ) and category_index >= 0:
+		return ALL_CATEGORIES[category_index]
+	else:
+		raise IndexError('The module-scope list ALL_CATEGORY has no element ' + str(category_index) + '.')
+
 # Review response, it will review the dictionary obtained from parse_response
 # and pass the following information for each entries:
 #
@@ -32,9 +50,15 @@ ALL_CATEGORIES = ['stat.AP', 'stat.CO', 'stat.ML', 'stat.ME', 'stat.TH', 'q-bio.
 # Only these information are passed since they will go to the telegram app.
 # The return argument is a list of dictionary with these entries
 
-def review_response(dictionary):
+def review_response(dictionary, max_number_authors):
 
 	results_list = []
+
+	if not isinstance(max_number_authors, int):
+		raise TypeError('The number of authors has to be an integer.')
+
+	if max_number_authors < 1:
+		raise ValueError('The maximum number of authors has to be bigger than 1.')
 
 	if not isinstance(dictionary, dict):
 		raise TypeError('The argument passed is not a dictionary.')
@@ -52,7 +76,7 @@ def review_response(dictionary):
 
 		# Only write the important data in the dictionary
 		element = {'title' : one_line_title(entry),
-				   'authors' : compact_authors(entry),
+				   'authors' : compact_authors(entry, max_number_authors),
 				   'year' : find_year(entry),
 				   'link' : is_field_there(entry, 'link')}
 		
@@ -68,6 +92,7 @@ def review_response(dictionary):
 	return results_list
 
 # This function returns the total number of results of the search
+
 def total_number_results(dictionary):
 
 	if not isinstance(dictionary, dict):
@@ -90,6 +115,7 @@ def total_number_results(dictionary):
 
 # This function is needed for the review_response.
 # It checks that the dictionary has something associated to the key, and if not, it returns None
+
 def is_field_there(dictionary, key):
 
 	try:
@@ -99,6 +125,7 @@ def is_field_there(dictionary, key):
 
 # This function is needed for the review_response.
 # It modifies the title so that any \n is absent
+
 def one_line_title(dictionary):
 
 	title = is_field_there(dictionary, 'title')
@@ -111,16 +138,24 @@ def one_line_title(dictionary):
 
 # This function is needed for the review_response.
 # It unifies the name of the authors in a single one, and return a unicode string (if there are some authors)
-def compact_authors(dictionary):
+# It also cuts the number of authors after max_number_authors, and replaces the remaining with 'et al.'
+
+def compact_authors(dictionary, max_number_authors):
 
 	authors_list = is_field_there(dictionary, 'authors')
 	authors_string = unicode( '' , "utf-8")
+	authors_number = 1
 
 	if isinstance(authors_list, list):
 		for author in authors_list:
 			author_name = is_field_there(author, 'name')
-			if isinstance(author_name, unicode):
+			if authors_number > max_number_authors:
+				authors_string = authors_string + u'et al.**'
+				break
+			if isinstance(author_name, unicode) and authors_number <= max_number_authors:
+				authors_number +=1
 				authors_string = authors_string + author_name + unicode( ', ' , "utf-8")
+
 	else:
 		return None
 
@@ -133,6 +168,7 @@ def compact_authors(dictionary):
 
 # This function is needed for the review_response.
 # For a given date, it returns the year.
+
 def find_year(dictionary):
 
 	date = is_field_there(dictionary, 'date')
