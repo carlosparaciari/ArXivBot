@@ -21,13 +21,13 @@ ALL_CATEGORIES = ['stat.AP', 'stat.CO', 'stat.ML', 'stat.ME', 'stat.TH', 'q-bio.
 
 # MODULE METHODS
 
-# This method returns the number of available arxiv categories
+# This method returns the number of available arXiv categories.
 
 def number_categories():
 
 	return len( ALL_CATEGORIES )
 
-# This method takes an integer i and returns the i-th category in the list ALL_CATEGORY
+# This method takes an integer i and returns the i-th category in the list ALL_CATEGORY.
 
 def single_category(category_index):
 
@@ -47,8 +47,8 @@ def single_category(category_index):
 # - year
 # - link
 #
-# Only these information are passed since they will go to the telegram app.
-# The return argument is a list of dictionary with these entries
+# Only these information are passed since they will go to the Telegram Bot.
+# The return argument is a list of dictionary with these entries.
 
 def review_response(dictionary, max_number_authors):
 
@@ -91,7 +91,7 @@ def review_response(dictionary, max_number_authors):
 	
 	return results_list
 
-# This function returns the total number of results of the search
+# This function returns the total number of results of the search.
 
 def total_number_results(dictionary):
 
@@ -114,7 +114,7 @@ def total_number_results(dictionary):
 	return int(total_results)
 
 # This function is needed for the review_response.
-# It checks that the dictionary has something associated to the key, and if not, it returns None
+# It checks that the dictionary has something associated to the key, and if not, it returns None.
 
 def is_field_there(dictionary, key):
 
@@ -124,7 +124,7 @@ def is_field_there(dictionary, key):
 		return None
 
 # This function is needed for the review_response.
-# It modifies the title so that any \n is absent
+# It removes the newline symbols \n from the title.
 
 def one_line_title(dictionary):
 
@@ -132,12 +132,13 @@ def one_line_title(dictionary):
 
 	if isinstance(title, unicode):
 		title = title.replace(u'\n',u'')
+		title = title.replace(u'  ',u' ')
 		return title
 	else:
 		return None
 
 # This function is needed for the review_response.
-# It unifies the name of the authors in a single one, and return a unicode string (if there are some authors)
+# It unifies the name of the authors in a single one, and return a Unicode string (if there are some authors).
 # It also cuts the number of authors after max_number_authors, and replaces the remaining with 'et al.'
 
 def compact_authors(dictionary, max_number_authors):
@@ -180,8 +181,8 @@ def find_year(dictionary):
 		return None
 
 # Parse the response. It modifies the response obtained by the request library
-# making it a rawdata (string). Then, it parse it using parsefeed. It returns
-# a dictionary.
+# making it a raw data (string). Then, it parse it using FeedParser.
+# It returns a dictionary.
 
 def parse_response(response):
 	
@@ -194,17 +195,17 @@ def parse_response(response):
 
 	return parsed_response
 
-# Request function to comunicate with the arxiv and download the informations
+# Request function to communicate with the arXiv and download the informations
 # It takes a string (the link) as argument
 # Check for the main connection errors.
-# Return the response
+# Return the response.
 
 def request_to_arxiv(arxiv_search_link):
 
 	if not ( isinstance(arxiv_search_link, unicode) or isinstance(arxiv_search_link, str) ):
 		raise TypeError('The argument passed is not a string.')
 
-	# Making a query to the arxiv
+	# Making a query to the arXiv
 	try:
 		response = requests.get( arxiv_search_link ) 
 	except requests.exceptions.InvalidSchema as invalid_schema:
@@ -212,7 +213,7 @@ def request_to_arxiv(arxiv_search_link):
 	except requests.exceptions.MissingSchema as missing_schema:
 		raise missing_schema
 	except:
-		raise GetRequestError('Get from arxiv failed. Might be connection problem')
+		raise GetRequestError('Get from arXiv failed. Might be connection problem')
 
 	# Check the status of the response
 	try:
@@ -222,9 +223,9 @@ def request_to_arxiv(arxiv_search_link):
 	else:
 		return response
 
-# The function adds to the arxiv link an extra field, which specifies
+# The function adds to the arXiv link an extra field, which specifies
 # the number of results we want to obtain. It output the link with
-# at the end the new specification
+# at the end the new specification.
 
 def specify_number_of_results(arxiv_search_link, number_of_results):
 
@@ -237,8 +238,8 @@ def specify_number_of_results(arxiv_search_link, number_of_results):
 
 # The function provides the correct time range for checking daily submissions.
 # The input is a GMT time step, and the output depends on the rules about
-# submission of the arxiv (see https://arxiv.org/help/submit#availability).
-# The output is a string which can be added to the request link to arxiv for
+# submission of the arXiv (see https://arxiv.org/help/submit#availability).
+# The output is a string which can be added to the request link to arXiv for
 # checking the new submissions.
 
 def time_range_for_today_search(time_information):
@@ -268,8 +269,8 @@ def time_range_for_today_search(time_information):
 	return submission_range
 
 # This function search the submissions which were available to the users on the date
-# specified by the time_information, in a given category (e.g. quant-ph) specified by
-# subject_category. The function returns the arxiv link for the search.
+# specified by the time_information, in a given category (e.g., quant-ph) specified by
+# subject_category. The function returns the arXiv link for the search.
 
 def search_day_submissions(time_information, subject_category, arxiv_search_link):
 
@@ -281,14 +282,14 @@ def search_day_submissions(time_information, subject_category, arxiv_search_link
 
 	return arxiv_search_link
 
-# This function checks whether the subject_category is an existing category of the arxiv,
-# and returns a boolean accordingly
+# This function checks whether the subject_category is an existing category of the arXiv,
+# and returns a boolean accordingly.
 
 def category_exists(subject_category):
 
 	return subject_category in ALL_CATEGORIES
 
-# Advanced search the arxiv.
+# Advanced search the arXiv.
 #
 # As parameter, it takes the following parameters:
 #
@@ -300,10 +301,10 @@ def category_exists(subject_category):
 # cat			Subject Category
 # rn			Report Number
 # id			Id
-# arxiv_search_link	The arxiv link where making the query
+# arxiv_search_link	The arXiv link where making the query
 # 
-# And it make the link for the request to arxiv, which will be passed
-# to the request to arxiv.
+# And it make the link for the request to arXiv, which will be passed
+# to the request_to_arxiv method.
 # 
 # If a variable is not a string, it is not included in the function,
 # But no exception is raised. Exception is raised only is the search
@@ -341,12 +342,12 @@ def advanced_search(author, title, abstract, comment, jref, category, rnum, iden
 
 	return arxiv_search_link
 
-# The simple search on the arxiv.
+# The simple search on the arXiv.
 # 
 # It takes the argument of the search, which is searched in the all fields,
 # such as title, author, etc. The argument of this function has to be a string,
-# or a list of strings. If nothing is passed, the search is not perfomed.
-# Retruns the link for the call to arxiv
+# or a list of strings. If nothing is passed, the search is not performed.
+# Returns the link for the call to arXiv
 
 def simple_search(words, arxiv_search_link):
 
@@ -369,7 +370,7 @@ def simple_search(words, arxiv_search_link):
 	if len(arxiv_search_link) == length_check:
 		raise NoArgumentError('No arguments have been provided to the search.')
 
-	# Remove last connector fromt the search
+	# Remove last connector from the search
 	arxiv_search_link = arxiv_search_link[: - len(connector) ]
 
 	return arxiv_search_link

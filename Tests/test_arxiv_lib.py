@@ -8,9 +8,13 @@ from subprocess import check_call
 import requests
 import time
 
-# ADVANCED SEARCH TESTS
+# NOTICE : A few tests make a request to the arXiv.
+# 		   In order to satisfy the arXiv regulation, a 3-second delay is used every time the test
+#		   makes a request to the arXiv (ONLY 3 tests at the moment)
 
-# When no arguments are passed, we need to raise error (NoArgumentError)
+# ---------------------------------- ADVANCED SEARCH TESTS ----------------------------------
+
+# when no arguments are passed, we need to raise error (NoArgumentError)
 def test_advanced_search_no_arguments():
 
 	link = 'http://export.arxiv.org/api/query?search_query='	
@@ -18,7 +22,7 @@ def test_advanced_search_no_arguments():
 	with assert_raises(NoArgumentError):
 		al.advanced_search(False, False, False, False, False, False, False, False, link)
 
-# When the response from arxiv is wrong (HTTPError)
+# when the response from arXiv is wrong (HTTPError)
 def test_advanced_search_status_code():
 
 	link = 'http://export.arxiv.org/apii/query?search_query=au:sparaciari_c'	
@@ -26,7 +30,7 @@ def test_advanced_search_status_code():
 	with assert_raises(requests.exceptions.HTTPError):
 		al.request_to_arxiv(link)
 
-# When the request to arxiv goes well
+# when the request to arXiv goes well
 def test_advanced_search_correct():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
@@ -34,6 +38,7 @@ def test_advanced_search_correct():
 
 	search_link = al.advanced_search('sparaciari_c', 'kullback', False, False, False, False, False, False, link)
 	response = al.request_to_arxiv(search_link).text
+	time.sleep(3)
 
 	with open(test_file, 'r') as f:
 		expected = f.read()
@@ -41,9 +46,9 @@ def test_advanced_search_correct():
 	# We remove the first few information, containing the current date.
 	assert_equal(response[504:], expected[504:], "The obtained response is different from the expected one")
 
-# SIMPLE SEARCH TESTS
+# ---------------------------------- SIMPLE SEARCH TESTS ----------------------------------
 
-# When no arguments are passed, we need to raise error
+# when no arguments are passed, we need to raise error
 def test_simple_search_no_arguments():
 
 	link = 'http://export.arxiv.org/api/query?search_query='	
@@ -51,7 +56,7 @@ def test_simple_search_no_arguments():
 	with assert_raises(NoArgumentError):
 		al.simple_search(False, link)
 
-# When the simple search returns the correct link for a string argument
+# when the simple search returns the correct link for a string argument
 def test_simple_search_correctness_str():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
@@ -61,7 +66,7 @@ def test_simple_search_correctness_str():
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
-# When the simple search returns the correct link for a unicode argument
+# when the simple search returns the correct link for a Unicode argument
 def test_simple_search_correctness_unicode():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
@@ -71,7 +76,7 @@ def test_simple_search_correctness_unicode():
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
-# When the simple search returns the correct link for a string list argument
+# when the simple search returns the correct link for a string list argument
 def test_simple_search_correctness_str_list():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
@@ -81,7 +86,7 @@ def test_simple_search_correctness_str_list():
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
-# When the simple search returns the correct link for a unicode list argument
+# when the simple search returns the correct link for a Unicode list argument
 def test_simple_search_correctness_unicode_list():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
@@ -91,9 +96,9 @@ def test_simple_search_correctness_unicode_list():
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
-# SINGLE CATEGORY TEST
+# ---------------------------------- SINGLE CATEGORY TEST ----------------------------------
 
-# Test that the function single_category raises an exception when it does not receive an integer
+# test that the function single_category raises an exception when it does not receive an integer
 def test_single_category_not_integer():
 
 	wrong_argument = 'this is a string'
@@ -101,7 +106,7 @@ def test_single_category_not_integer():
 	with assert_raises(TypeError):
 		al.single_category(wrong_argument)
 
-# Test that the function single_category raises an exception when the argument is not between 0 and len(ALL_CATEGORIES)
+# test that the function single_category raises an exception when the argument is not between 0 and len(ALL_CATEGORIES)
 def test_single_category_wrong_index():
 
 	wrong_index_neg = -1
@@ -113,7 +118,7 @@ def test_single_category_wrong_index():
 	with assert_raises(IndexError):
 		al.single_category(wrong_index_pos)
 
-# Test that the function single_category works correctly
+# test that the function single_category works correctly
 def test_single_category_correct():
 
 	correct_indices = [0, 3, al.number_categories() - 1]
@@ -123,9 +128,9 @@ def test_single_category_correct():
 		obtained_result = al.single_category(ind)
 		assert_equal(obtained_result, expected_result, "The obtained result is different from the expected one")
 
-# COSTUMISED NUMBER OF RESULTS TEST
+# ---------------------------------- COSTUMISED NUMBER OF RESULTS TEST ----------------------------------
 
-# Test that the function specify_number_of_results raises a ValueError when a negative number of results is passed
+# test that the function specify_number_of_results raises a ValueError when a negative number of results is passed
 def test_specify_number_of_results_negative():
 
 	link = 'http://export.arxiv.org/api/query?search_query=all:electron'
@@ -134,7 +139,7 @@ def test_specify_number_of_results_negative():
 	with assert_raises(ValueError):
 		al.specify_number_of_results(link, number_of_results)
 
-# Test that the function specify_number_of_results raises a ValueError when a negative number of results is passed
+# test that the function specify_number_of_results raises a ValueError when a negative number of results is passed
 def test_specify_number_of_results_correct():
 
 	link = 'http://export.arxiv.org/api/query?search_query=all:electron'
@@ -145,9 +150,9 @@ def test_specify_number_of_results_correct():
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
-#  TODAY'S SUBMISSIONS TEST
+# ---------------------------------- TODAY'S SUBMISSIONS TEST ----------------------------------
 
-# Test that the time range we use is the same of the arxiv (checked at https://arxiv.org/help/submit#availability)
+# test that the time range we use is the same of the arXiv (checked at https://arxiv.org/help/submit#availability)
 def test_time_range_for_today_search():
 
 	time_information = [time.strptime('Wed 19 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
@@ -172,7 +177,7 @@ def test_time_range_for_today_search():
 		obtained_result = al.time_range_for_today_search(time_info)
 		assert_equal(obtained_result, expected_result, "The obtained time range is different from the expected one")
 
-# Test on the function category_exists
+# test on the function category_exists
 def test_category_exists_correct():
 
 	existing_category = 'cs.GT'
@@ -181,7 +186,7 @@ def test_category_exists_correct():
 	assert_equal( al.category_exists( existing_category ), True, "The obtained boolean is different from the expected one")
 	assert_equal( al.category_exists( non_existing_category ), False, "The obtained boolean is different from the expected one")
 
-# Test if search_day_submissions raises error for wrong category
+# test if search_day_submissions raises error for wrong category
 def test_search_day_submissions_wrong_category():
 
 	link = 'http://export.arxiv.org/api/query?search_query=all:electron'
@@ -191,7 +196,7 @@ def test_search_day_submissions_wrong_category():
 	with assert_raises(NoCategoryError):
 		al.search_day_submissions(time_information, non_existing_category, link)
 
-# Test if search_day_submissions returns the expected link for the search
+# test if search_day_submissions returns the expected link for the search
 def test_search_day_submissions_correct():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
@@ -203,9 +208,9 @@ def test_search_day_submissions_correct():
 
 	assert_equal( obtained_result, expected_result, "The obtained link is different from the expected one")
 
-# REQUEST TO ARXIV TESTS
+# ---------------------------------- REQUEST TO ARXIV TESTS ----------------------------------
 
-# When anything but a string is passed to the al.request_to_arxiv it needs to rise error (TypeError)
+# when anything but a string is passed to the al.request_to_arxiv it needs to rise error (TypeError)
 def test_request_to_arxiv_no_string():
 
 	possible_arguments = [1, 1., [1, 'a'], False, {'a' : 1}]
@@ -214,7 +219,7 @@ def test_request_to_arxiv_no_string():
 		with assert_raises(TypeError):
 			al.request_to_arxiv(arg)
 
-# When the link is not in the correct format (MissingSchema)
+# when the link is not in the correct format (MissingSchema)
 def test_request_to_arxiv_wrong_link_format():
 
 	link = 'wrong_link_format'
@@ -222,7 +227,7 @@ def test_request_to_arxiv_wrong_link_format():
 	with assert_raises(requests.exceptions.MissingSchema):
 		al.request_to_arxiv(link)
 
-# When there is not Internet Connection (GetRequestError) - Need administrator privileges to work:
+# when there is not Internet Connection (GetRequestError) - Need administrator privileges to work:
 # def test_request_to_arxiv_no_connection():
 	
 # 	link = 'http://export.arxiv.org/api/query?search_query=au:sparaciari_c'	
@@ -234,14 +239,14 @@ def test_request_to_arxiv_wrong_link_format():
 # 	with assert_raises(GetRequestError):
 # 		al.request_to_arxiv(link)
 
-# 	# We turn it on stright after, waiting 15 seconds to be sure we are up and running
+# 	# We turn it on straight after, waiting 15 seconds to be sure we are up and running
 # 	# For Windows use : netsh interface set interface "Wi-Fi" enabled
 # 	check_call('netsh interface set interface "Wi-Fi" enabled',shell=True)
 # 	time.sleep(10)
 
-# PARSE RESPONSE TESTS
+# ---------------------------------- PARSE RESPONSE TESTS ----------------------------------
 
-# when the argument of parse response is not a requests.Respones, need to return error
+# when the argument of parse response is not a requests.Response, need to return error
 def test_parse_response_wrong_argument():
 
 	possible_arguments = [1, 1., [1, 'a'], False, {'a' : 1}]
@@ -257,6 +262,7 @@ def test_parse_response_correct():
 	test_file = os.path.join('Data', 'text_parsing_test.txt')
 
 	response = al.request_to_arxiv(link)
+	time.sleep(3)
 	parsed_response = al.parse_response(response)
 
 	# We select the abstract of the first paper downloaded
@@ -269,9 +275,9 @@ def test_parse_response_correct():
 
 	return 0
 
-# REVIEW FEED TESTS
+# ---------------------------------- REVIEW FEED TESTS ----------------------------------
 
-# Tests that the method total_number_results raises error if it does not receive a dictionary
+# tests that the method total_number_results raises error if it does not receive a dictionary
 def test_total_number_results_wrong_argument():
 
 	not_dictionary = 'This is a string'
@@ -279,7 +285,7 @@ def test_total_number_results_wrong_argument():
 	with assert_raises(TypeError):
 			al.total_number_results(not_dictionary)
 	
-# Tests that the method total_number_results raises error if dictionary has no key 'feed'
+# tests that the method total_number_results raises error if dictionary has no key 'feed'
 def test_total_number_results_no_feed():
 
 	dictionary = {'key1' : 1 , 'key2' : 'hello'}
@@ -287,7 +293,7 @@ def test_total_number_results_no_feed():
 	with assert_raises(NoArgumentError):
 			al.total_number_results(dictionary)
 
-# Tests that the method total_number_results raises error if dictionary has the key 'feed', but it is not a dict
+# tests that the method total_number_results raises error if dictionary has the key 'feed', but it is not a dictionary
 def test_total_number_results_wrong_feed():
 
 	dictionary = {'key1' : 1 , 'key2' : 'hello', 'feed' : 'this is a string'}
@@ -295,7 +301,7 @@ def test_total_number_results_wrong_feed():
 	with assert_raises(TypeError):
 			al.total_number_results(dictionary)
 
-# Tests that the method total_number_results raises error if dictionary does not has the key 'totalresults'
+# tests that the method total_number_results raises error if dictionary does not has the key 'totalresults'
 def test_total_number_results_no_totalresults():
 
 	dictionary = {'key1' : 1 , 'key2' : 'hello', 'feed' : {'key3' : True}}
@@ -303,7 +309,7 @@ def test_total_number_results_no_totalresults():
 	with assert_raises(NoArgumentError):
 			al.total_number_results(dictionary)
 
-# Tests that the method total_number_results returns the correct value
+# tests that the method total_number_results returns the correct value
 def test_total_number_results_correct():
 
 	dictionary = {'key1' : 1 , 'key2' : 'hello', 'feed' : {'opensearch_totalresults' : u'13'}}
@@ -313,9 +319,9 @@ def test_total_number_results_correct():
 
 	assert_equal(obtained_result, expected_result, "The obtained number is different from the expected one")
 
-# REVIEW RESPONSE TESTS
+# ---------------------------------- REVIEW RESPONSE TESTS ----------------------------------
 
-# when the max number of authors of review response is not an int, needs to return error
+# when the maximum number of authors of review response is not an int, needs to return error
 def test_review_response_wrong_number_type():
 
 	dictionary = {'a' : 1, 'entries' : [{ 'key1' : 1, 'key2' : 2}, { 'key3' : 3, 'key4' : 4}]}
@@ -324,7 +330,7 @@ def test_review_response_wrong_number_type():
 	with assert_raises(TypeError):
 		al.review_response(dictionary, max_number)
 
-# when the max number of authors of review response is not bigger or equal to 1, needs to return error
+# when the maximum number of authors of review response is not bigger or equal to 1, needs to return error
 def test_review_response_wrong_number_type():
 
 	dictionary = {'a' : 1, 'entries' : [{ 'key1' : 1, 'key2' : 2}, { 'key3' : 3, 'key4' : 4}]}
@@ -390,22 +396,22 @@ def test_review_response_correct():
 # general test, from the link to the result list given by review_response
 def test_review_response_correct_from_link():
 
-	link = 'http://export.arxiv.org/api/query?search_query=all:electron+AND+all:proton'
-	test_file = 'text_parsing_test.txt'
+	link = 'http://export.arxiv.org/api/query?search_query=au:sparaciari_c+AND+ti:kullback'
 
 	response = al.request_to_arxiv(link)
+	time.sleep(3)
 	parsed_response = al.parse_response(response)
 
 	result_list = al.review_response(parsed_response, 100)
 
-	expected_list = {'link': u'http://arxiv.org/abs/0806.3233v1',
-					 'authors': u"Anatoly Yu. Smirnov, Sergey E. Savel'ev, Franco Nori",
-					 'year': u'2008',
-					 'title': u'Shuttle-mediated proton pumping across the inner mitochondrial membrane'}
+	expected_list = {'link': u'http://arxiv.org/abs/1311.6008v2',
+					 'authors': u"Carlo Sparaciari, Stefano Olivares, Francesco Ticozzi, Matteo G. A. Paris",
+					 'year': u'2014',
+					 'title': u'Exact and approximate solutions for the quantum minimum-Kullback-entropy estimation problem'}
 
-	assert_equal(result_list[4], expected_list, "The obtained response is different from the expected one")
+	assert_equal(result_list[0], expected_list, "The obtained response is different from the expected one")
 
-# IS FIELD THERE TESTS
+# ---------------------------------- IS FIELD THERE TESTS ----------------------------------
 
 # when the filed is not there, al.is_field_there should give None
 def test_is_field_there_no():
@@ -425,7 +431,7 @@ def test_is_field_there_no():
 
 	assert_equal(element, 1, "The obtained response is different from the expected one")
 
-# ONE LINE TITLE TESTS
+# ---------------------------------- ONE LINE TITLE TESTS ----------------------------------
 
 # when the title field is not there, one_line_title should give None
 def test_one_line_title_no_entry():
@@ -467,7 +473,7 @@ def test_one_line_title_newline():
 
 	assert_equal(element, expected_string, "The obtained response is different from the expected one")
 
-# COMPATC AUTHORS TESTS
+# ---------------------------------- COMPATC AUTHORS TESTS ----------------------------------
 
 # when the author field is not there, compact_authors should give None
 def test_compact_authors_no_entry():
@@ -487,7 +493,7 @@ def test_compact_authors_no_list():
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
-# when the author field is a list of auhtors, but they do not have the field 'name'
+# when the author field is a list of authors, but they do not have the field 'name'
 def test_compact_authors_no_name():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : [{'c' : 1},{'d' : False}] }
@@ -496,7 +502,7 @@ def test_compact_authors_no_name():
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
-# when the author field is a list of auhtors, each of them with 'name', but they are not strings
+# when the author field is a list of authors, each of them with 'name', but they are not strings
 def test_compact_authors_no_strings():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : [{'name' : 1},{'name' : False}] }
@@ -505,7 +511,7 @@ def test_compact_authors_no_strings():
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
-# when the author field is a list of auhtors, each of them with 'name', and a unicode string associated to it
+# when the author field is a list of authors, each of them with 'name', and a Unicode string associated to it
 def test_compact_authors_correct():
 
 	dictionary = {'a' : 1 , 'b' : 'hi',
@@ -524,7 +530,6 @@ def test_compact_authors_correct():
 	assert_equal(element, expected_element, "The obtained response is different from the expected one")
 
 # when the authors are more than expected, cut the list and replace with 'et al.'
-
 def test_compact_authors_cut_number():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : [{'name' : unicode('Carlo Sparaciari', "utf-8")},
@@ -543,7 +548,7 @@ def test_compact_authors_cut_number():
 		obtained_string = al.compact_authors(dictionary, max_number)
 		assert_equal(expected_string, obtained_string, "The obtained string is different from the expected one")
 
-# FIND YEAR TESTS
+# ---------------------------------- FIND YEAR TESTS ----------------------------------
 
 # when the date field is not there, find_year should give None
 def test_find_year_no_entry():

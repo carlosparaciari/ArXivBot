@@ -5,7 +5,7 @@ import time
 from nose.tools import assert_raises, assert_equal
 import today_lib as tl
 
-# The test shows how the function which_weekday works
+# shows how the function which_weekday works
 def test_which_weekday_passes():
 
 	time_information = time.strptime('Thu 20 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
@@ -14,7 +14,7 @@ def test_which_weekday_passes():
 
 	assert_equal(obtained_result, expected_result, "The obtained weekday is different from the expected one")
 
-# The test shows how the function what_time works
+# shows how the function what_time works
 def test_what_time_passes():
 
 	time_information = time.strptime('Thu 20 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
@@ -23,7 +23,7 @@ def test_what_time_passes():
 
 	assert_equal(obtained_result, expected_result, "The obtained weekday is different from the expected one")
 
-# The test shows how the function move_current_date works for future days
+# shows how the function move_current_date works for future days
 def test_move_current_date_future():
 
 	time_information = time.strptime('Thu 20 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
@@ -34,7 +34,7 @@ def test_move_current_date_future():
 
 	assert_equal(obtained_result, expected_result, "The obtained weekday is different from the expected one")
 
-# The test shows how the function move_current_date works for past days
+# shows how the function move_current_date works for past days
 def test_move_current_date_past():
 
 	time_information = time.strptime('Thu 20 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
@@ -45,7 +45,7 @@ def test_move_current_date_past():
 
 	assert_equal(obtained_result, expected_result, "The obtained weekday is different from the expected one")
 
-# Test of move_current_date function for funny days of the year
+# tests the move_current_date function for funny days of the year
 def test_move_current_date_special_days():
 
 	time_information = [time.strptime('Sun 2 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),

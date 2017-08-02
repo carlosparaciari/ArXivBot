@@ -1,7 +1,7 @@
 from emoji import UNICODE_EMOJI
 
 # The function detect_emoji search the string text_msg and return True if
-# the string contains an emoji, False otherwhise.
+# the string contains an emoji, False otherwise.
 
 def detect_emoji(text_msg):
 

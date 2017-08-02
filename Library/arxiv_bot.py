@@ -7,9 +7,9 @@ import arxiv_lib as al
 import emoji_detect as emjd
 from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, NoCategoryError
 
-# Class ArxivBot inherits from the telepot.Bot class.
-# The calss is used to deal with the messaged recived by the bot on Telegram,
-# and to perform simple or advanced searches on the Arxiv website.
+# Class ArxivBot inherits from the telepot.Bot class (https://github.com/nickoala/telepot).
+# The class is used to deal with the messages received by the bot on Telegram,
+# and to perform simple searches on the arXiv website.
 
 class ArxivBot(telepot.Bot):
 
@@ -24,7 +24,7 @@ class ArxivBot(telepot.Bot):
 		self.max_characters_chat = 4096
 		self.arxiv_fair_time = 3
 
-	# The method allows for the injection of the filenames of the error and chat logs
+	# The method allows for the injection of the name of the files for the error, feedback, and chat logs
 
 	def set_log_files(self, errors_file_name, message_file_name, feedback_file_name):
 
@@ -32,8 +32,17 @@ class ArxivBot(telepot.Bot):
 		self.message_log_file = message_file_name
 		self.feedback_log_file = feedback_file_name
 
+	# The method allows for the injection of the email address for the feedbacks
+
+	def set_email_feedback(self, email_address):
+
+		self.feedback_address = email_address
+
 	# The handle method receives the message sent by the user and processes it depending
-	# on the different "flavor" associated to it.
+	# on the different "flavour" associated to it.
+	#
+	# NOTICE: Most of the "flavours" are not implemented yet.
+	# 		  Some might be implemented in the future.
 
 	def handle(self, msg):
 
@@ -50,17 +59,17 @@ class ArxivBot(telepot.Bot):
 		else:
 			raise telepot.BadFlavor(msg)
 
-	# The handle_chat_message method is called by the handle method when the "flavor" of the
-	# message is 'chat'. The user is allowed to send three different commands:
+	# The handle_chat_message method is called by the handle method when the "flavour" of the
+	# message is 'chat'. The user is allowed to send four different commands:
 	#
-	# - /search = perform a simple serch on all fields in the Arxiv
-	# - /advsearch = perform an advanced search within different fields in the Arxiv
+	# - /search = perform a simple search in the arXiv
+	# - /today = search the papers of the day in a given category of the arXiv
+	# - /feedback = the user can use the command to send a feedback
 	# - /help = send an help message to the user
 	#
 	# If another command is sent, the method suggest the user to use the /help.
 	# If the /search command is used, the do_easy_search method is called.
-	# If the /advsearch command is used, the do_advanced_search is called.
-	# If the /help command is used, a message with the description of the commands is sent.
+	# If the /today command is used, the do_today_search is called.
 	#
 	# After the search is done, the results are sent to the user and the task is finished.
 
@@ -100,13 +109,13 @@ class ArxivBot(telepot.Bot):
 	# The do_easy_search method is used when the user calls the /search command.
 	# The methods takes as input
 	#
-	# - The argument of the search, a list of unicode strings (text) which define the search
+	# - The argument of the search, a list of Unicode strings (text) which define the search
 	# - The identity of the chat, so as to be able to answer the call
 	#
-	# The method composes the arxiv link to which the requests is sent, makes a requests to
+	# The method composes the arXiv link to which the requests is sent, makes a requests to
 	# the website, parses the results, and sends them to the user.
 	#
-	# NOTICE : No more than 10 results are shown due to the limitations on the screen of mobilephones.
+	# NOTICE : No more than 10 results are shown due to the limitations on the screen of mobile phones.
 	# 		   The user is nevertheless advised to refine the search if more than 10 results are obtained.
 
 	def do_easy_search(self, argument, chat_identity):
@@ -126,13 +135,13 @@ class ArxivBot(telepot.Bot):
 		return None
 
 	# The do_today_search method is used when the user calls the /today command.
-	# It search for the papers of the day in a given category of the arxiv.
+	# It search for the papers of the day in a given category of the arXiv.
 	# The methods takes as input
 	#
-	# - The arxiv category we are interested in (ONLY one category for limiting the number of results)
+	# - The arXiv category we are interested in (ONLY one category for limiting the number of results)
 	# - The identity of the chat, so as to be able to answer the call
 	#
-	# The method composes the arxiv link to which the requests is sent, makes a requests to
+	# The method composes the arXiv link to which the requests is sent, makes a requests to
 	# the website, parses the results, and sends them to the user.
 	#
 	# NOTICE : Only for this kind of search, we allow for a maximum of 50 results.
@@ -161,7 +170,7 @@ class ArxivBot(telepot.Bot):
 	def give_feedback(self, argument, chat_identity):
 
 		if len(argument) == 0:
-			feedback_response = u"We are always happy to hear your view! \U0001F4E3\n\nUse /feedback <i>your comment</i>\nor email us at carlo.sparaciari@gmail.com"
+			feedback_response = u"We are always happy to hear your view! \U0001F4E3\n\nUse /feedback <i>your comment</i>\nor email us at " + self.feedback_address
 		else:
 			separator = ' '
 			message = separator.join(argument)
@@ -193,17 +202,28 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.specify_number_of_results')
 			return None
 
-		message = u"Search for papers on the arXiv with this bot. Search papers using some keywords, or check the new submissions to your favourite category, and share the results easily. With ArXivBot you can\n\n- make a /search using some keywords\n    <i>e.g. /search atom 2017</i>\n\n- look at what's going on /today in the arXiv\n    <i>e.g. /today " + example_category + u"</i>\n\n- send us your /feedback\n    <i>e.g. /feedback I like this bot!</i>\n\nEnjoy your search! \U0001F609"
+		message = (u"Search for papers on the arXiv with this bot. "
+				   u"Search papers using some keywords, or check the new submissions to your favourite category, "
+				   u"and share the results easily. With ArXivBot you can\n\n"
+				   u"- make a /search using some keywords\n"
+				   u"    <i>e.g. /search atom 2017</i>\n\n"
+				   u"- look at what's going on /today in the arXiv\n"
+				   u"    <i>e.g. /today " + example_category + u"</i>\n\n"
+				   u"- send us your /feedback\n"
+				   u"    <i>e.g. /feedback I like this bot!</i>\n\n"
+				   u"Enjoy your search! \U0001F609"
+				  )
+
 		self.sendMessage(chat_identity, message, parse_mode='HTML')
 
 		return None
 
 	# The search_and_reply method is used in the other search methods to
-	# send the request to the arxiv, parse the result, and send it to the
-	# user.
+	# send the request to the arXiv, parse the result, and send it to the user.
+	# 
 	# The methods takes as input
 	#
-	# - The arxiv link for the request
+	# - The arXiv link for the request
 	# - The identity of the chat, so as to be able to answer the call
 	# - The maximum number of result to be displayed (by default this is 10)
 
@@ -290,7 +310,7 @@ class ArxivBot(telepot.Bot):
 
 		return None
 
-	# The method send_results_back format the result of the searh and send it to the user.
+	# The method send_results_back format the result of the search and send it to the user.
 	#
 	# NOTICE: Telegram does not allow for sending messages bigger than 4096 characters,
 	#         so the method cut the message into chucks if the total number of characters is bigger. 
@@ -306,12 +326,14 @@ class ArxivBot(telepot.Bot):
 			result_counter += 1
 		
 		if remaining_results > 0:
-			remaining_information = 'There are ' + str(remaining_results) + ' unshown results.\nConsider refining your search, or visit the Arxiv webpage.'
+			remaining_information = ('There are ' + str(remaining_results) + ' remaining results.\n'
+									 'Consider refining your search, or visit the arXiv web-page.'
+									)
 			message_result = self.check_size_and_split_message(message_result, remaining_information, chat_identity)
 
 		self.send_message_safely( message_result, chat_identity )
 
-	# The methods checks the lenght of the message and divides it if the max number of characters is exceeded.
+	# The method checks the length of the message, and divides it if the maximum number of characters is exceeded.
 
 	def check_size_and_split_message(self, message, new_item, chat_identity):
 
@@ -323,7 +345,7 @@ class ArxivBot(telepot.Bot):
 
 		return message
 
-	# Send message safely
+	# Send message safely.
 
 	def send_message_safely(self, message, chat_identity):
 
@@ -336,7 +358,7 @@ class ArxivBot(telepot.Bot):
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
 
-	# Saves the feedback message in a log file
+	# Saves the feedback message in a log file.
 
 	def save_feedback(self, chat_identity, argument):
 
@@ -346,7 +368,9 @@ class ArxivBot(telepot.Bot):
 			fblog.write(message_string)
 
 
-	# Saves the details of the message (who, what) in a log file for statistical purposes
+	# Saves the details of the message (who, what) in a log file for statistical purposes.
+	#
+	# NOTICE: The chat identity is saved, but not other information such as the real name of the user.
 
 	def save_message_details_log(self, chat_identity, content_type):
 
@@ -355,7 +379,7 @@ class ArxivBot(telepot.Bot):
 		with open(self.message_log_file, 'a') as msglog:
 			msglog.write(message_string)
 
-	# Saves the content of the message in a log file for statistical purposes
+	# Saves the content of the message in a log file for statistical purposes.
 
 	def save_message_content_log( self, text_message ):
 
@@ -363,7 +387,7 @@ class ArxivBot(telepot.Bot):
 		with open(self.message_log_file, 'a') as msglog:
 			msglog.write(message_string.encode('utf8'))
 
-	# Saves the unknown errors in a log file for bug fixing purposes
+	# Saves the unknown errors in a log file for bug-fixing purposes.
 
 	def save_unknown_error_log(self, chat_identity, in_function):
 
@@ -372,7 +396,7 @@ class ArxivBot(telepot.Bot):
 		with open(self.errors_log_file, 'a') as errlog:
 			errlog.write(error_string)
 
-	# Saves the known errors in a log file for bug fixing purposes
+	# Saves the known errors in a log file for bug-fixing purposes.
 
 	def save_known_error_log(self, chat_identity, raised_exception):
 
@@ -381,7 +405,7 @@ class ArxivBot(telepot.Bot):
 		with open(self.errors_log_file, 'a') as errlog:
 			errlog.write(error_string)
 
-	# --- TO BE IMPLEMENTED IN THE FUTURE (MAYBE) ---
+	# --- TO BE IMPLEMENTED IN THE FUTURE (MAYBE?) ---
 
 	def handle_callback_query(self, msg):
 
@@ -395,7 +419,7 @@ class ArxivBot(telepot.Bot):
 
 		result_id, from_id, message_query = telepot.glance(msg, 'chosen_inline_result')
 		
-	# Advanced search (the method can be implemented but does not seem to fit into the design of the Bot)
+	# Advanced search (the method can be implemented but does not seem to fit into the design of the Bot).
 
 	def do_advanced_search(self):
 		

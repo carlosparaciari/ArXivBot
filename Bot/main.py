@@ -17,6 +17,7 @@ with open(os.path.join('Data','bot_details.yaml'), 'r') as file_input:
 
 bot = ab.ArxivBot(detail['token'])
 bot.set_log_files(errors_log_file, chat_log_file, feedback_log_file)
+bot.set_email_feedback(detail['email'])
 
 try:
 	bot.message_loop(run_forever = True)
