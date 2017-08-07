@@ -7,6 +7,7 @@ from customised_exceptions import NoArgumentError, GetRequestError,NoCategoryErr
 from subprocess import check_call
 import requests
 import time
+import cgi
 
 # NOTICE : A few tests make a request to the arXiv.
 # 		   In order to satisfy the arXiv regulation, a 3-second delay is used every time the test
@@ -466,6 +467,18 @@ def test_one_line_title_newline():
 
 	title_string = u'Once upon\n a time'
 	expected_string = u'Once upon a time'
+
+	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : title_string}
+
+	element = al.one_line_title(dictionary)
+
+	assert_equal(element, expected_string, "The obtained response is different from the expected one")
+
+# when the title field has a symbol as <, >, or &, we replace with the HTML symbol.
+def test_one_line_title_escape():
+
+	title_string = u'4 > 3 & 5 < 6'
+	expected_string = u'4 &gt; 3 &amp; 5 &lt; 6'
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : title_string}
 

@@ -351,7 +351,7 @@ class ArxivBot(telepot.Bot):
 
 		try:
 			self.sendMessage(chat_identity, message, parse_mode='HTML')
-		except TelegramError as TeleE:
+		except telepot.exception.TelegramError as TeleE:
 			self.sendMessage(chat_identity, u"Telegram is messing around with the results, we'll have a look into this. Sorry!")
 			self.save_known_error_log(chat_identity, TeleE)
 		except:

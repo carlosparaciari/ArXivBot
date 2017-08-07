@@ -2,6 +2,7 @@ from customised_exceptions import NoArgumentError, GetRequestError, UnknownError
 import requests
 import feedparser
 import sys, os
+import cgi
 import today_lib as tl
 
 # MODULE-SCOPE VARIABLE
@@ -125,6 +126,7 @@ def is_field_there(dictionary, key):
 
 # This function is needed for the review_response.
 # It removes the newline symbols \n from the title.
+# It also escape the HTML symbols <, >, &, so that they are correctly interpreted by telepot.send_message().
 
 def one_line_title(dictionary):
 
@@ -133,6 +135,7 @@ def one_line_title(dictionary):
 	if isinstance(title, unicode):
 		title = title.replace(u'\n',u'')
 		title = title.replace(u'  ',u' ')
+		title = cgi.escape(title)
 		return title
 	else:
 		return None
