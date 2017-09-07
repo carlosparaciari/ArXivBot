@@ -3,6 +3,8 @@ import requests
 import time
 import os
 import random
+import tempfile
+import shutil
 import arxiv_lib as al
 import emoji_detect as emjd
 from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, NoCategoryError
@@ -37,6 +39,12 @@ class ArxivBot(telepot.Bot):
 	def set_email_feedback(self, email_address):
 
 		self.feedback_address = email_address
+
+	# The method allows for the injection of the name of the files for storing the users' preferences
+
+	def set_preference_database(self, preference_file_name):
+
+		self.preference_file = preference_file_name
 
 	# The handle method receives the message sent by the user and processes it depending
 	# on the different "flavour" associated to it.
@@ -95,6 +103,11 @@ class ArxivBot(telepot.Bot):
 		if command == '/search' and len(text_message_list) > 1:
 			command_argument = text_message_list[1:]
 			self.do_easy_search( command_argument , chat_id )
+		elif command == '/set' and len(text_message_list) == 2:
+			command_argument = text_message_list[1]
+			self.set_category( command_argument , chat_id )
+		elif command == '/today' and len(text_message_list) == 1:
+			self.do_today_search_with_set_preference( chat_id )
 		elif command == '/today' and len(text_message_list) == 2:
 			command_argument = text_message_list[1]
 			self.do_today_search( command_argument , chat_id )
@@ -132,6 +145,60 @@ class ArxivBot(telepot.Bot):
 
 		self.search_and_reply( easy_search_link, chat_identity )
 
+		return None
+
+	# The set_category method is used when the user calls the /set command.
+	# It save the favourite category of the user, so that in the future the
+	# user can use the /today command without specifying the category
+	# The methods takes as input
+	#
+	# - The arXiv category we are interested in (ONLY one category)
+	# - The identity of the chat associated with the preference
+	#
+	# The method saves the preferred category in a file, together with the
+	# chat_id of the user. If another category was previously saved, the
+	# method overrides it with the new one.
+
+	def set_category(self, arxiv_category, chat_identity):
+
+		if not al.category_exists( arxiv_category ):
+			self.sendMessage(chat_identity, u'Please use the arXiv subjects.\nSee https://arxiv.org/help/api/user-manual for further information.')
+			return None
+
+		if self.preference_exists( chat_identity ):
+			self.overwrite_preference( chat_identity, arxiv_category )
+			self.sendMessage(chat_identity, u'Your preferred category has been updated!\nNow use /today to get the daily submissions to this category.')
+		else:
+			self.add_preference( chat_identity, arxiv_category )
+			self.sendMessage(chat_identity, u'Your preferred category has been recorded!\nNow use /today to get the daily submissions to this category.')
+
+		return None
+
+	# The do_today_search_with_set_preference method is used to perform
+	# a do_today_search using a pre-defined category that the user has
+	# selected using the set_catgory method.
+	#
+	# If the category is not set, the Bot will notify the user about the
+	# usage of the /today command.
+
+	def do_today_search_with_set_preference(self, chat_identity):
+
+		if self.preference_exists( chat_identity ):
+			preferred_category = self.search_for_category( chat_identity )
+			if preferred_category == None:
+				self.sendMessage(chat_identity, u'An unknown error occurred while checking your preferences. \U0001F631')
+				self.save_unknown_error_log(chat_identity, 'arxiv_lib.do_today_search_with_set_preference')
+				return None
+			self.do_today_search( preferred_category, chat_identity )
+		else:
+			message = (u"You have not /set your favourite arXiv category. "
+					   u"Please set your favourite category with\n"
+					   u"    <i>/set favourite_category</i>\n"
+				   	   u"or specify the category you are interested in with\n"
+				   	   u"    <i>/today arxiv_category</i>\n"
+					  )
+			self.sendMessage(chat_identity, message, parse_mode='HTML')
+		
 		return None
 
 	# The do_today_search method is used when the user calls the /today command.
@@ -209,6 +276,9 @@ class ArxivBot(telepot.Bot):
 				   u"    <i>e.g. /search atom 2017</i>\n\n"
 				   u"- look at what's going on /today in the arXiv\n"
 				   u"    <i>e.g. /today " + example_category + u"</i>\n\n"
+				   u"- /set your favourite arXiv category\n"
+				   u"    <i>e.g. /set " + example_category + u"</i>\n"
+				   u"           <i>/today</i>\n\n"
 				   u"- send us your /feedback\n"
 				   u"    <i>e.g. /feedback I like this bot!</i>\n\n"
 				   u"Enjoy your search! \U0001F609"
@@ -357,6 +427,74 @@ class ArxivBot(telepot.Bot):
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
+
+	# Search in the preference database for the chat_id of the user.
+	# If it is found, return True, otherwise return False
+
+	def preference_exists(self, chat_identity):
+
+		preference_bool = False
+
+		with open(self.preference_file, 'r') as database:
+			for item in database:
+				if self.pattern_is_present( item, str(chat_identity) ):
+					preference_bool = True
+					break
+
+		return preference_bool
+
+	# Replace the old preferred category associated with the chat_id
+	# with the new category provided
+
+	def overwrite_preference(self, chat_identity, category):
+
+		temporary_file, absolute_path_file = tempfile.mkstemp()
+
+		with os.fdopen(temporary_file, 'w') as new_database:
+			with open(self.preference_file, 'r') as old_database:
+				for item in old_database:
+					if self.pattern_is_present( item, str(chat_identity) ):
+						item = str(chat_identity) + ' ' + str(category) + '\n'
+					new_database.write(item)
+
+		os.remove(self.preference_file)
+		shutil.move(absolute_path_file, self.preference_file)
+
+	# Add the preference to the database, in a single line with the following structure
+	# chat_id category
+
+	def add_preference(self, chat_identity, category):
+
+		preference_string = str(chat_identity) + ' ' + str(category) + '\n'
+
+		with open(self.preference_file, 'a') as database:
+			database.write(preference_string)
+
+	# Search into the preference database for the category associated with the chat_id provided
+
+	def search_for_category(self, chat_identity):
+
+		category = None
+
+		with open(self.preference_file, 'r') as database:
+			for item in database:
+				identity, preference = item.split()
+				if identity == str(chat_identity):
+					category = preference
+
+		return category
+
+	# Check if a pattern is present in a string.
+	# This should probably not be a method of the class, as it is pretty general.
+	# Might think of putting in an additional library.
+
+	def pattern_is_present(self, string, pattern):
+
+		index = string.find(pattern)
+
+		if index != -1:
+			return True
+		return False
 
 	# Saves the feedback message in a log file.
 
