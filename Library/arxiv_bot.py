@@ -237,7 +237,10 @@ class ArxivBot(telepot.Bot):
 	def give_feedback(self, argument, chat_identity):
 
 		if len(argument) == 0:
-			feedback_response = u"We are always happy to hear your view! \U0001F4E3\n\nUse /feedback <i>your comment</i>\nor email us at " + self.feedback_address
+			feedback_response = (u'We are always happy to hear your view! \U0001F4E3\n\n'
+								 u'Use /feedback <i>your comment</i>\n'
+								 u'or email us at ' + self.feedback_address
+								)
 		else:
 			separator = ' '
 			message = separator.join(argument)
