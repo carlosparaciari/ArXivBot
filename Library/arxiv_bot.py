@@ -162,7 +162,7 @@ class ArxivBot(telepot.Bot):
 	def set_category(self, arxiv_category, chat_identity):
 
 		if not al.category_exists( arxiv_category ):
-			self.sendMessage(chat_identity, u'Please use the arXiv subjects.\nSee https://arxiv.org/help/api/user-manual for further information.')
+			self.sendMessage(chat_identity, u'Please use the arXiv subjects.\nSee http://arxitics.com/help/categories for further information.')
 			return None
 
 		if self.preference_exists( chat_identity ):
@@ -221,7 +221,7 @@ class ArxivBot(telepot.Bot):
 		try:
 			today_search_link = al.search_day_submissions(today_time_GMT, arxiv_category, self.arxiv_search_link)
 		except NoCategoryError:
-			self.sendMessage(chat_identity, u'Please use the arXiv subjects.\nSee https://arxiv.org/help/api/user-manual for further information.')
+			self.sendMessage(chat_identity, u'Please use the arXiv subjects.\nSee http://arxitics.com/help/categories for further information.')
 			return None
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
