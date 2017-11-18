@@ -3,24 +3,25 @@ import requests
 import feedparser
 import sys, os
 import cgi
+import bs4
 import today_lib as tl
 
 # MODULE-SCOPE VARIABLE
 
-ALL_CATEGORIES = ['stat.AP', 'stat.CO', 'stat.ML', 'stat.ME', 'stat.OT', 'stat.TH', 'q-fin.PR', 'q-fin.RM', 'q-fin.PM', 'q-fin.TR',
-'q-fin.MF', 'q-fin.CP', 'q-fin.ST', 'q-fin.GN', 'q-fin.EC', 'q-bio.BM', 'q-bio.GN', 'q-bio.MN', 'q-bio.SC', 'q-bio.CB', 'q-bio.NC',
-'q-bio.TO', 'q-bio.PE', 'q-bio.QM', 'q-bio.OT', 'cs.AI', 'cs.CL', 'cs.CC', 'cs.CE', 'cs.CG', 'cs.GT', 'cs.CV', 'cs.CY', 'cs.CR', 'cs.DS',
-'cs.DB', 'cs.DL', 'cs.DM', 'cs.DC', 'cs.ET', 'cs.FL', 'cs.GL', 'cs.GR', 'cs.AR', 'cs.HC', 'cs.IR', 'cs.IT', 'cs.LG', 'cs.LO', 'cs.MS',
-'cs.MA', 'cs.MM', 'cs.NI', 'cs.NE', 'cs.NA', 'cs.OS', 'cs.OH', 'cs.PF', 'cs.PL', 'cs.RO', 'cs.SI', 'cs.SE', 'cs.SD', 'cs.SC', 'cs.SY',
-'astro-ph.GA', 'astro-ph.CO', 'astro-ph.EP', 'astro-ph.HE', 'astro-ph.IM', 'astro-ph.SR', 'cond-mat.dis-nn', 'cond-mat.mtrl-sci',
-'cond-mat.mes-hall', 'cond-mat.other', 'cond-mat.quant-gas', 'cond-mat.soft', 'cond-mat.stat-mech', 'cond-mat.str-el',
-'cond-mat.supr-con', 'gr-qc', 'hep-ex', 'hep-lat', 'hep-ph', 'hep-th', 'math-ph', 'nlin.AO', 'nlin.CG', 'nlin.CD', 'nlin.SI', 'nlin.PS',
-'nucl-ex', 'nucl-th', 'physics.acc-ph', 'physics.app-ph', 'physics.ao-ph', 'physics.atom-ph', 'physics.atm-clus', 'physics.bio-ph',
+ALL_CATEGORIES = ['stat.AP', 'stat.CO', 'stat.ML', 'stat.ME', 'stat.OT', 'stat.TH', 'stat', 'q-fin.PR', 'q-fin.RM', 'q-fin.PM', 'q-fin.TR',
+'q-fin.MF', 'q-fin.CP', 'q-fin.ST', 'q-fin.GN', 'q-fin.EC', 'q-fin', 'q-bio.BM', 'q-bio.GN', 'q-bio.MN', 'q-bio.SC', 'q-bio.CB', 'q-bio.NC',
+'q-bio', 'q-bio.TO', 'q-bio.PE', 'q-bio.QM', 'q-bio.OT', 'cs.AI', 'cs.CL', 'cs.CC', 'cs.CE', 'cs.CG', 'cs.GT', 'cs.CV', 'cs.CY', 'cs.CR',
+'cs.DS', 'cs.DB', 'cs.DL', 'cs.DM', 'cs.DC', 'cs.ET', 'cs.FL', 'cs.GL', 'cs.GR', 'cs.AR', 'cs.HC', 'cs.IR', 'cs.IT', 'cs.LG', 'cs.LO', 'cs.MS',
+'cs.MA', 'cs.MM', 'cs.NI', 'cs.NE', 'cs.NA', 'cs.OS', 'cs.OH', 'cs.PF', 'cs.PL', 'cs.RO', 'cs.SI', 'cs.SE', 'cs.SD', 'cs.SC', 'cs.SY', 'cs',
+'astro-ph.GA', 'astro-ph.CO', 'astro-ph.EP', 'astro-ph.HE', 'astro-ph.IM', 'astro-ph.SR', 'astro-ph', 'cond-mat.dis-nn', 'cond-mat.mtrl-sci',
+'cond-mat.mes-hall', 'cond-mat.other', 'cond-mat.quant-gas', 'cond-mat.soft', 'cond-mat.stat-mech', 'cond-mat.str-el', 'cond-mat.supr-con',
+'cond-mat', 'gr-qc', 'hep-ex', 'hep-lat', 'hep-ph', 'hep-th', 'math-ph', 'nlin.AO', 'nlin.CG', 'nlin.CD', 'nlin.SI', 'nlin.PS', 'nlin',
+'nucl-ex', 'nucl-th', 'physics', 'physics.acc-ph', 'physics.app-ph', 'physics.ao-ph', 'physics.atom-ph', 'physics.atm-clus', 'physics.bio-ph',
 'physics.chem-ph', 'physics.class-ph', 'physics.comp-ph', 'physics.data-an', 'physics.flu-dyn', 'physics.gen-ph', 'physics.geo-ph',
 'physics.hist-ph', 'physics.ins-det', 'physics.med-ph', 'physics.optics', 'physics.ed-ph', 'physics.soc-ph', 'physics.plasm-ph',
-'physics.pop-ph', 'physics.space-ph', 'quant-ph', 'math.AG', 'math.AT', 'math.AP', 'math.CT', 'math.CA', 'math.CO', 'math.AC', 'math.CV',
-'math.DG', 'math.DS', 'math.FA', 'math.GM', 'math.GN', 'math.GT', 'math.GR', 'math.HO', 'math.IT', 'math.KT', 'math.LO', 'math.MP',
-'math.MG', 'math.NT', 'math.NA', 'math.OA', 'math.OC', 'math.PR', 'math.QA', 'math.RT', 'math.RA', 'math.SP', 'math.ST', 'math.SG']
+'physics.pop-ph', 'physics.space-ph', 'econ', 'eess', 'quant-ph', 'math', 'math.AG', 'math.AT', 'math.AP', 'math.CT', 'math.CA', 'math.CO',
+'math.AC', 'math.CV', 'math.DG', 'math.DS', 'math.FA', 'math.GM', 'math.GN', 'math.GT', 'math.GR', 'math.HO', 'math.IT', 'math.KT', 'math.LO',
+'math.MP', 'math.MG', 'math.NT', 'math.NA', 'math.OA', 'math.OC', 'math.PR', 'math.QA', 'math.RT', 'math.RA', 'math.SP', 'math.ST', 'math.SG']
 
 # MODULE METHODS
 
@@ -47,13 +48,16 @@ def single_category(category_index):
 #
 # - title
 # - authors
-# - year
 # - link
 #
 # Only these information are passed since they will go to the Telegram Bot.
 # The return argument is a list of dictionary with these entries.
+#
+# Two different behaviours are expected from this function, depending on the
+# value of feed_type, which can be API or RSS (the first is used for searches,
+# the second for new submissions)
 
-def review_response(dictionary, max_number_authors):
+def review_response(dictionary, max_number_authors, feed_type):
 
 	results_list = []
 
@@ -77,14 +81,21 @@ def review_response(dictionary, max_number_authors):
 		if not isinstance(entry, dict):
 			raise TypeError('One of the entries is corrupted.')
 
-		# Only write the important data in the dictionary
-		element = {'title' : one_line_title(entry),
-				   'authors' : compact_authors(entry, max_number_authors),
-				   'year' : find_year(entry),
-				   'link' : is_field_there(entry, 'link')}
+		if feed_type == 'API':
+			element = {'title' : prepare_title_field_API(entry),
+				   	   'authors' : prepare_authors_field_API(entry, max_number_authors)}
+		elif feed_type == 'RSS':
+			if is_update( entry ) == True:
+				continue
+			element = {'title' : prepare_title_field_RSS(entry),
+					   'authors' : prepare_authors_field_RSS(entry, max_number_authors)}
+		else:
+			raise ValueError('Wrong feed type. It can only be API or RSS.')
+		
+		element['link'] = is_field_there(entry, 'link')
 		
 		# Check whether all field in the element are None
-		is_empty = element['title'] == None and element['authors'] == None and element['year'] == None and element['link'] == None
+		is_empty = element['title'] == None and element['authors'] == None and element['link'] == None
 
 		if not is_empty:
 			results_list.append(element)
@@ -93,6 +104,130 @@ def review_response(dictionary, max_number_authors):
 		raise NoArgumentError('No entries have been found during the search.')
 	
 	return results_list
+
+# This function is needed for the review_response.
+# It removes the newline symbols \n from the title.
+# It also escape the HTML symbols <, >, &, so that they are correctly interpreted by telepot.send_message().
+
+def prepare_title_field_API(dictionary):
+
+	title = is_field_there(dictionary, 'title')
+
+	if isinstance(title, unicode):
+		title = title.replace(u'\n',u'')
+		title = title.replace(u'  ',u' ')
+		title = cgi.escape(title)
+		return title
+	else:
+		return None
+
+# This function is needed for the review_response.
+# It unifies the name of the authors in a single one, and return a Unicode string (if there are some authors).
+# It also cuts the number of authors after max_number_authors, and replaces the remaining with 'et al.'
+
+def prepare_authors_field_API(dictionary, max_number_authors):
+
+	authors_list = is_field_there(dictionary, 'authors')
+	authors_string = unicode( '' , "utf-8")
+	authors_number = 1
+
+	if isinstance(authors_list, list):
+		for author in authors_list:
+			author_name = is_field_there(author, 'name')
+			if authors_number > max_number_authors:
+				authors_string = authors_string + u'et al.**'
+				break
+			if isinstance(author_name, unicode) and authors_number <= max_number_authors:
+				authors_number +=1
+				authors_string = authors_string + author_name + unicode( ', ' , "utf-8")
+
+	else:
+		return None
+
+	# Check if we have something in the authors string
+	if len(authors_string) == 0:
+		return None
+	else:
+		authors_string = authors_string[: -2]
+		return authors_string
+
+# This function is needed for the review_response.
+# This function prepares the title field after receiving an entry from the RSS feed.
+# The main difference with the API search is the presence of the arXiv id, which is removed.
+# It takes a dictionary, returns a unicode string.
+
+def prepare_title_field_RSS(dictionary):
+
+	title = prepare_title_field_API(dictionary)
+
+	if title != None:
+		index = title.find(' (arXiv:')
+		title = title[:index-1]
+	
+	return title
+
+# This function is needed for the review_response.
+# This function prepares the authors field after receiving an entry from the RSS feed.
+# The function is different from the one used for standard search feeds as the authors
+# are given in a single line and hyper links are present. This function remove hyper links
+# and cut the number of authors if they are more than a maximum value
+
+def prepare_authors_field_RSS(dictionary, max_number_authors):
+
+	authors_string = is_field_there(dictionary, 'author')
+
+	if isinstance(authors_string, unicode):
+		end_string = authors_count_same_string(authors_string, max_number_authors)
+		if end_string != -1:
+			authors_string = authors_string[:end_string] + u', et al.'
+		authors_string = remove_hyperlinks(authors_string)
+		return authors_string
+	else:
+		return None
+
+# This function is needed for the prepare_authors_field_RSS.
+# This function removes the hyper links (<a href = ***> ... </a>) from a string,
+# and return a unicode string.
+
+def remove_hyperlinks(string):
+
+	bs_string = bs4.BeautifulSoup(string, 'html.parser')
+
+	for hlink in bs_string.findAll('a'):
+		hlink.replaceWithChildren()
+
+	return unicode( str( bs_string ) , "utf-8")
+
+# This function is needed for the prepare_authors_field_RSS.
+# This function finds the position of the "max_number_authors"-th comma in the string,
+# and returns it. If this comma doesn't exist, return -1.
+
+def authors_count_same_string(authors_string, max_number_authors):
+
+	index = -1
+
+	for iteration in range( max_number_authors ):
+		index = authors_string.find( ',' , index + 1 )
+		if index == -1:
+			break
+
+	return index
+
+# This function is needed for the review_response.
+# Check if the entry is an update of a previous version of the paper.
+# Return True if it is, and False if is not.
+# If the title field is absent, returns True.
+
+def is_update( dictionary ):
+
+	title = is_field_there(dictionary, 'title')
+
+	if title != None:
+		index = title.find('UPDATED')
+		if index == -1:
+			return False
+				
+	return True
 
 # This function returns the total number of results of the search.
 
@@ -125,52 +260,6 @@ def is_field_there(dictionary, key):
 		return dictionary[key]
 	except:
 		return None
-
-# This function is needed for the review_response.
-# It removes the newline symbols \n from the title.
-# It also escape the HTML symbols <, >, &, so that they are correctly interpreted by telepot.send_message().
-
-def one_line_title(dictionary):
-
-	title = is_field_there(dictionary, 'title')
-
-	if isinstance(title, unicode):
-		title = title.replace(u'\n',u'')
-		title = title.replace(u'  ',u' ')
-		title = cgi.escape(title)
-		return title
-	else:
-		return None
-
-# This function is needed for the review_response.
-# It unifies the name of the authors in a single one, and return a Unicode string (if there are some authors).
-# It also cuts the number of authors after max_number_authors, and replaces the remaining with 'et al.'
-
-def compact_authors(dictionary, max_number_authors):
-
-	authors_list = is_field_there(dictionary, 'authors')
-	authors_string = unicode( '' , "utf-8")
-	authors_number = 1
-
-	if isinstance(authors_list, list):
-		for author in authors_list:
-			author_name = is_field_there(author, 'name')
-			if authors_number > max_number_authors:
-				authors_string = authors_string + u'et al.**'
-				break
-			if isinstance(author_name, unicode) and authors_number <= max_number_authors:
-				authors_number +=1
-				authors_string = authors_string + author_name + unicode( ', ' , "utf-8")
-
-	else:
-		return None
-
-	# Check if we have something in the authors string
-	if len(authors_string) == 0:
-		return None
-	else:
-		authors_string = authors_string[: -2]
-		return authors_string
 
 # This function is needed for the review_response.
 # For a given date, it returns the year.
@@ -241,49 +330,16 @@ def specify_number_of_results(arxiv_search_link, number_of_results):
 
 	return arxiv_search_link
 
-# The function provides the correct time range for checking daily submissions.
-# The input is a GMT time step, and the output depends on the rules about
-# submission of the arXiv (see https://arxiv.org/help/submit#availability).
-# The output is a string which can be added to the request link to arXiv for
-# checking the new submissions.
-
-def time_range_for_today_search(time_information):
-
-	current_weekday = tl.which_weekday(time_information)
-	submission_range = 'submittedDate:['
-	deadline_submission = '1800'
-
-	if current_weekday == 'Mon':
-		initial_date = tl.move_current_date(-4, time_information)
-		final_date = tl.move_current_date(-3, time_information)
-	elif current_weekday == 'Tue':
-		initial_date = tl.move_current_date(-4, time_information)
-		final_date = tl.move_current_date(-1, time_information)		
-	elif current_weekday == 'Wed' or current_weekday == 'Thu' or current_weekday == 'Fri':
-		initial_date = tl.move_current_date(-2, time_information)
-		final_date = tl.move_current_date(-1, time_information)
-	elif current_weekday == 'Sat':
-		initial_date = tl.move_current_date(-3, time_information)
-		final_date = tl.move_current_date(-2, time_information)
-	elif current_weekday == 'Sun':
-		initial_date = tl.move_current_date(-4, time_information)
-		final_date = tl.move_current_date(-3, time_information)
-
-	submission_range += initial_date + deadline_submission + '+TO+' + final_date + deadline_submission + ']'
-
-	return submission_range
-
 # This function search the submissions which were available to the users on the date
 # specified by the time_information, in a given category (e.g., quant-ph) specified by
 # subject_category. The function returns the arXiv link for the search.
 
-def search_day_submissions(time_information, subject_category, arxiv_search_link):
+def search_day_submissions(subject_category, arxiv_search_link):
 
 	if not category_exists(subject_category):
 		raise NoCategoryError('The passed category is not in the ArXiv')
 
-	time_range = time_range_for_today_search(time_information)
-	arxiv_search_link += 'cat:' + subject_category + '+AND+' + time_range
+	arxiv_search_link += subject_category
 
 	return arxiv_search_link
 

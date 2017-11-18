@@ -21,6 +21,7 @@ class ArxivBot(telepot.Bot):
 
 		super(ArxivBot, self).__init__(*args, **kwargs)
 		self.arxiv_search_link = 'http://export.arxiv.org/api/query?search_query='
+		self.arxiv_rss_link = 'http://arxiv.org/rss/'
 		self.max_result_number = 50
 		self.max_number_authors = 5
 		self.max_characters_chat = 4096
@@ -72,6 +73,7 @@ class ArxivBot(telepot.Bot):
 	#
 	# - /search = perform a simple search in the arXiv
 	# - /today = search the papers of the day in a given category of the arXiv
+	# - /set = set the category where to search for the new submission
 	# - /feedback = the user can use the command to send a feedback
 	# - /help = send an help message to the user
 	#
@@ -216,10 +218,8 @@ class ArxivBot(telepot.Bot):
 
 	def do_today_search(self, arxiv_category, chat_identity):
 
-		today_time_GMT = time.gmtime()
-
 		try:
-			today_search_link = al.search_day_submissions(today_time_GMT, arxiv_category, self.arxiv_search_link)
+			today_search_link = al.search_day_submissions(arxiv_category, self.arxiv_rss_link)
 		except NoCategoryError:
 			self.sendMessage(chat_identity, u'Please use the arXiv subjects.\nSee http://arxitics.com/help/categories for further information.')
 			return None
@@ -228,7 +228,7 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.search_day_submissions')
 			return None
 
-		self.search_and_reply( today_search_link, chat_identity, self.max_result_number )
+		self.search_and_reply( today_search_link, chat_identity, self.max_result_number, 'RSS' )
 
 		return None
 
@@ -300,10 +300,12 @@ class ArxivBot(telepot.Bot):
 	# - The identity of the chat, so as to be able to answer the call
 	# - The maximum number of result to be displayed (by default this is 10)
 
-	def search_and_reply(self, search_link, chat_identity, max_number = 10):
+	def search_and_reply(self, search_link, chat_identity, max_number = 10, feed_type = 'API'):
+
 
 		try:
-			search_link = al.specify_number_of_results(search_link, max_number)
+			if feed_type == 'API':
+				search_link = al.specify_number_of_results(search_link, max_number)
 		except ValueError as VE:
 			self.sendMessage(chat_identity, u'The number of shown results cannot be negative.')
 			self.save_known_error_log(chat_identity, VE)
@@ -344,7 +346,7 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		try:
-			search_list = al.review_response( search_dictionary , self.max_number_authors )
+			search_list = al.review_response( search_dictionary , self.max_number_authors , feed_type )
 		except NoArgumentError:
 			self.sendMessage(chat_identity, u'No result has been found for your search. Try again!')
 			return None
@@ -362,7 +364,11 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		try:
-			total_results = al.total_number_results( search_dictionary )
+			if feed_type == 'API':
+				total_results = al.total_number_results( search_dictionary )
+			else:
+				total_results = len(search_list)
+				search_list = search_list[:max_number]
 			remaining_results = total_results - max_number
 		except NoArgumentError as NAE:
 			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
@@ -379,7 +385,8 @@ class ArxivBot(telepot.Bot):
 
 		self.send_results_back(chat_identity, search_list, remaining_results)
 
-		time.sleep( self.arxiv_fair_time ) 
+		if feed_type == 'API':
+			time.sleep( self.arxiv_fair_time ) 
 
 		return None
 

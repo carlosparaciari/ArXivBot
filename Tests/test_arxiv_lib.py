@@ -123,7 +123,7 @@ def test_single_category_wrong_index():
 def test_single_category_correct():
 
 	correct_indices = [0, 3, al.number_categories() - 1]
-	expected_results = ['stat.AP', 'stat.ME', 'quant-ph']
+	expected_results = ['stat.AP', 'stat.ME', 'math.SG']
 
 	for ind, expected_result in zip(correct_indices, expected_results):
 		obtained_result = al.single_category(ind)
@@ -153,31 +153,6 @@ def test_specify_number_of_results_correct():
 
 # ---------------------------------- TODAY'S SUBMISSIONS TEST ----------------------------------
 
-# test that the time range we use is the same of the arXiv (checked at https://arxiv.org/help/submit#availability)
-def test_time_range_for_today_search():
-
-	time_information = [time.strptime('Wed 19 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
-						time.strptime('Thu 20 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
-						time.strptime('Fri 21 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
-						time.strptime('Sat 22 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
-						time.strptime('Sun 23 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
-						time.strptime('Mon 24 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S'),
-						time.strptime('Tue 25 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
-						]
-	expected_results = ['submittedDate:[201707171800+TO+201707181800]',
-					    'submittedDate:[201707181800+TO+201707191800]',
-					    'submittedDate:[201707191800+TO+201707201800]',
-					    'submittedDate:[201707191800+TO+201707201800]',
-					    'submittedDate:[201707191800+TO+201707201800]',
-					    'submittedDate:[201707201800+TO+201707211800]',
-					    'submittedDate:[201707211800+TO+201707241800]'
-					    ]
-
-	for time_info, expected_result in zip(time_information, expected_results):
-
-		obtained_result = al.time_range_for_today_search(time_info)
-		assert_equal(obtained_result, expected_result, "The obtained time range is different from the expected one")
-
 # test on the function category_exists
 def test_category_exists_correct():
 
@@ -191,21 +166,19 @@ def test_category_exists_correct():
 def test_search_day_submissions_wrong_category():
 
 	link = 'http://export.arxiv.org/api/query?search_query=all:electron'
-	time_information = time.strptime('Wed 19 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
 	non_existing_category = 'not.cat'
 
 	with assert_raises(NoCategoryError):
-		al.search_day_submissions(time_information, non_existing_category, link)
+		al.search_day_submissions(non_existing_category, link)
 
 # test if search_day_submissions returns the expected link for the search
 def test_search_day_submissions_correct():
 
-	link = 'http://export.arxiv.org/api/query?search_query='
-	time_information = time.strptime('Wed 19 Jul 2017 12:15:31', '%a %d %b %Y %H:%M:%S')
+	link = 'http://arxiv.org/rss/'
 	arxiv_category = 'math.DS'
 
-	expected_result = 'http://export.arxiv.org/api/query?search_query=cat:math.DS+AND+submittedDate:[201707171800+TO+201707181800]'
-	obtained_result = al.search_day_submissions(time_information, arxiv_category, link)
+	expected_result = 'http://arxiv.org/rss/math.DS'
+	obtained_result = al.search_day_submissions(arxiv_category, link)
 
 	assert_equal( obtained_result, expected_result, "The obtained link is different from the expected one")
 
@@ -329,7 +302,7 @@ def test_review_response_wrong_number_type():
 	max_number = 'this is a string'
 
 	with assert_raises(TypeError):
-		al.review_response(dictionary, max_number)
+		al.review_response(dictionary, max_number, 'API')
 
 # when the maximum number of authors of review response is not bigger or equal to 1, needs to return error
 def test_review_response_wrong_number_type():
@@ -339,7 +312,7 @@ def test_review_response_wrong_number_type():
 
 	for max_number in max_numbers:
 		with assert_raises(ValueError):
-			al.review_response(dictionary, max_number)
+			al.review_response(dictionary, max_number, 'API')
 
 # when the argument of review response is not a dictionary, needs to return error
 def test_review_response_wrong_argument():
@@ -348,7 +321,7 @@ def test_review_response_wrong_argument():
 
 	for arg in possible_arguments:
 		with assert_raises(TypeError):
-			al.review_response(arg, 100)
+			al.review_response(arg, 100, 'API')
 
 # when the dictionary does not have the field 'entries'
 def test_review_response_no_entries():
@@ -356,7 +329,7 @@ def test_review_response_no_entries():
 	dictionary = {'a' : 1 , 'b' : 'hi'}
 
 	with assert_raises(NoArgumentError):
-		al.review_response(dictionary, 100)
+		al.review_response(dictionary, 100, 'API')
 
 # when the dictionary has the field 'entries', but is not a list
 def test_review_response_entries_no_list():
@@ -364,18 +337,18 @@ def test_review_response_entries_no_list():
 	dictionary = {'a' : 1 , 'b' : 'hi' , 'entries' : 'this is not a list'}
 
 	with assert_raises(TypeError):
-		al.review_response(dictionary, 100)
+		al.review_response(dictionary, 100, 'RSS')
 
 # when the dictionary has the field 'entries', it is a list, but not a list of dictionaries
-def test_review_response_entries__list_no_dictionary():
+def test_review_response_entries_list_no_dictionary():
 
 	dictionary = {'a' : 1 , 'b' : 'hi' , 'entries' : [1,2,3]}
 
 	with assert_raises(TypeError):
-		al.review_response(dictionary, 100)
+		al.review_response(dictionary, 100, 'API')
 
-# when the dictionary has the field 'entries', and is a list of dictionaries, and one entry is correct
-def test_review_response_correct():
+# when the type_feed is wrong
+def test_review_response_wrong_feed_type():
 
 	dictionary = {'a' : 1 , 'b' : 'hi' ,
 				  'entries' : [{'noise' : True,
@@ -388,9 +361,50 @@ def test_review_response_correct():
 				  			   	'animal' : 'Frog'}
 				  			  ]}
 
-	result_list = al.review_response(dictionary, 100)
+	with assert_raises(ValueError):
+		al.review_response(dictionary, 100, 'WRONG')
 
-	expected_list = [{'title' : u'Nice Title', 'authors' : u'Carlo', 'year' : u'1992', 'link' : 'www.hi.com'}]
+# when the dictionary has the field 'entries', and is a list of dictionaries, and one entry is correct, and we use API
+def test_review_response_correct_api():
+
+	dictionary = {'a' : 1 , 'b' : 'hi' ,
+				  'entries' : [{'noise' : True,
+				  				'title' : u'Nice Title',
+				  				'animal' : 'Dog',
+				  				'authors' : [{'name' : u'Carlo'}],
+				  				'date' : u'1992-05-12',
+				  				'link' : 'www.hi.com'},
+				  			   {'noise' : False,
+				  			   	'animal' : 'Frog'}
+				  			  ]}
+
+	result_list = al.review_response(dictionary, 100, 'API')
+
+	expected_list = [{'title' : u'Nice Title', 'authors' : u'Carlo', 'link' : 'www.hi.com'}]
+
+	assert_equal(result_list, expected_list, "The obtained response is different from the expected one")
+
+# when the dictionary has the field 'entries', and is a list of dictionaries, and one entry is correct, and we use RSS
+def test_review_response_correct_rss():
+
+	dictionary = {'a' : 1 , 'b' : 'hi' ,
+				  'entries' : [{'noise' : True,
+				  				'title' : u'This is a\n new paper. (arXiv:0000.00000v1 [cat])',
+				  				'animal' : 'Dog',
+				  				'author' : u'<a href="http://webpage.com/Mario">Mario Rossi</a>, <a href="http://webpage.com/Giulio">Giulio Verdi</a>, <a href="http://webpage.com/Mauro">Mauro Bianchi</a>',
+				  				'date' : u'1992-05-12',
+				  				'link' : u'www.hi.com'},
+				  			   {'noise' : False,
+				  				'title' : u'This is an old paper. (arXiv:0000.00000v1 [cat] UPDATED)',
+				  				'animal' : 'Cat',
+				  				'author' : u'<a href="http://webpage.com/Mario">Mario Rossi</a>, <a href="http://webpage.com/Giulio">Giulio Verdi</a>, <a href="http://webpage.com/Mauro">Mauro Bianchi</a>',
+				  				'date' : u'1991-03-17',
+				  				'link' : u'www.hello.com'}
+				  			  ]}
+
+	result_list = al.review_response(dictionary, 2, 'RSS')
+
+	expected_list = [{'title' : u'This is a new paper', 'authors' : u'Mario Rossi, Giulio Verdi, et al.', 'link' : u'www.hi.com'}]
 
 	assert_equal(result_list, expected_list, "The obtained response is different from the expected one")
 
@@ -403,11 +417,10 @@ def test_review_response_correct_from_link():
 	time.sleep(3)
 	parsed_response = al.parse_response(response)
 
-	result_list = al.review_response(parsed_response, 100)
+	result_list = al.review_response(parsed_response, 100, 'API')
 
 	expected_list = {'link': u'http://arxiv.org/abs/1311.6008v2',
 					 'authors': u"Carlo Sparaciari, Stefano Olivares, Francesco Ticozzi, Matteo G. A. Paris",
-					 'year': u'2014',
 					 'title': u'Exact and approximate solutions for the quantum minimum-Kullback-entropy estimation problem'}
 
 	assert_equal(result_list[0], expected_list, "The obtained response is different from the expected one")
@@ -432,100 +445,247 @@ def test_is_field_there_no():
 
 	assert_equal(element, 1, "The obtained response is different from the expected one")
 
-# ---------------------------------- ONE LINE TITLE TESTS ----------------------------------
+# ------------------------------ PREPARE TITLE FIELD API TESTS ------------------------------
 
-# when the title field is not there, one_line_title should give None
-def test_one_line_title_no_entry():
+# when the title field is not there, prepare_title_field_API should give None
+def test_prepare_title_field_API_no_entry():
 
 	dictionary = {'a' : 1 , 'b' : 'hi'}
 
-	element = al.one_line_title(dictionary)
+	element = al.prepare_title_field_API(dictionary)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
 # when the title field is there, but it is not a string
-def test_one_line_title_wrong_entry():
+def test_prepare_title_field_API_wrong_entry():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : 1}
 
-	element = al.one_line_title(dictionary)
+	element = al.prepare_title_field_API(dictionary)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
 # when the title field is there, and there is a string with no \n
-def test_one_line_title_no_newline():
+def test_prepare_title_field_API_no_newline():
 
 	title_string = u'Once upon a time'
 	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : title_string}
 
-	element = al.one_line_title(dictionary)
+	element = al.prepare_title_field_API(dictionary)
 
 	assert_equal(element, title_string, "The obtained response is different from the expected one")
 
 # when the title field is there, and there is a string with \n
-def test_one_line_title_newline():
+def test_prepare_title_field_API_newline():
 
 	title_string = u'Once upon\n a time'
 	expected_string = u'Once upon a time'
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : title_string}
 
-	element = al.one_line_title(dictionary)
+	element = al.prepare_title_field_API(dictionary)
 
 	assert_equal(element, expected_string, "The obtained response is different from the expected one")
 
 # when the title field has a symbol as <, >, or &, we replace with the HTML symbol.
-def test_one_line_title_escape():
+def test_prepare_title_field_API_escape():
 
 	title_string = u'4 > 3 & 5 < 6'
 	expected_string = u'4 &gt; 3 &amp; 5 &lt; 6'
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : title_string}
 
-	element = al.one_line_title(dictionary)
+	element = al.prepare_title_field_API(dictionary)
 
 	assert_equal(element, expected_string, "The obtained response is different from the expected one")
 
-# ---------------------------------- COMPATC AUTHORS TESTS ----------------------------------
+# ------------------------------ PREPARE TITLE FIELD RSS TESTS ------------------------------
 
-# when the author field is not there, compact_authors should give None
-def test_compact_authors_no_entry():
+# test correctness of the prepare_title_field_RSS function
+def test_prepare_title_field_RSS_correct():
+
+	title_string = u'This is a very nice\n title for a paper, and 4 > 3. (arXiv:0000.00000v1 [cat])'
+	expected_string = u'This is a very nice title for a paper, and 4 &gt; 3'
+
+	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : title_string}
+
+	element = al.prepare_title_field_RSS(dictionary)
+
+	assert_equal(element, expected_string, "The obtained response is different from the expected one")
+
+# --------------------------------- REMOVE HYPERLINKS TESTS ---------------------------------
+
+# test that nothing happen if there are no hyper links
+def test_remove_hyperlinks_no_href():
+
+	input_string = u'This is a nice test. Hi!'
+	expected_string = u'This is a nice test. Hi!'
+
+	output_string = al.remove_hyperlinks(input_string)
+
+	assert_equal(output_string, expected_string, "The obtained response is different from the expected one")
+
+# test that hyper links are correctly removed
+def test_remove_hyperlinks_with_href():
+
+	input_string = u'<a href="http://webpage.com">This is </a>a nice <a href="http://webpage.org">test</a>. <a href="http://webpage.net">Hi!</a>'
+	expected_string = u'This is a nice test. Hi!'
+
+	output_string = al.remove_hyperlinks(input_string)
+
+	assert_equal(output_string, expected_string, "The obtained response is different from the expected one")
+
+# ------------------------------- FIND UPDATED ELEMENTS TESTS -------------------------------
+
+# test that function returns False if paper has not UPDATED in title
+def test_is_updated_false():
+
+	input_string = u'New arxiv title. (arxiv:0000.00000v1 [cat])'
+	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : input_string}
+
+	expected_result = False
+	obtained_result = al.is_update(dictionary)
+
+	assert_equal(obtained_result, expected_result, "The obtained response is different from the expected one")
+
+# test that function returns True if paper has UPDATED in title
+def test_is_updated_true():
+
+	input_string = u'Old arxiv title. (arxiv:0000.00000v1 [cat] UPDATED)'
+	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : input_string}
+
+	expected_result = True
+	obtained_result = al.is_update(dictionary)
+
+	assert_equal(obtained_result, expected_result, "The obtained response is different from the expected one")
+
+
+# test that the function behaves correctly when "updated" is in the title, but the paper is new
+def test_is_updated_work_correct():
+
+	input_string = u'New arxiv title, with the word updated in it. (arxiv:0000.00000v1 [cat])'
+	dictionary = {'a' : 1 , 'b' : 'hi', 'title' : input_string}
+
+	expected_result = False
+	obtained_result = al.is_update(dictionary)
+
+	assert_equal(obtained_result, expected_result, "The obtained response is different from the expected one")
+
+# ----------------------------------- AUTHORS COUNT TESTS -----------------------------------
+
+# test that the index is -1 if the number of authors is less or equal to the max one
+def test_authors_count_same_string_no_cut():
+
+	input_string = u'Mario, Gianni, Alberto'
+	expected_index = -1
+
+	output_index = al.authors_count_same_string(input_string, 3)
+	assert_equal(output_index, expected_index, "The obtained response is different from the expected one")
+
+	output_string = al.authors_count_same_string(input_string, 10)
+	assert_equal(output_index, expected_index, "The obtained response is different from the expected one")
+
+# test that the index is not -1 if the number of authors is more than the max one
+def test_authors_count_same_string_cut():
+
+	input_string = u'Mario, Gianni, Alberto'
+
+	expected_index = 13
+	output_index = al.authors_count_same_string(input_string, 2)
+	assert_equal(output_index, expected_index, "The obtained response is different from the expected one")
+
+	expected_index = 5
+	output_index = al.authors_count_same_string(input_string, 1)
+	assert_equal(output_index, expected_index, "The obtained response is different from the expected one")
+
+# test that the index is -1 if the max number of authors is 0
+def test_authors_count_same_string_zero():
+
+	input_string = u'Mario, Gianni, Alberto'
+
+	expected_index = -1
+	output_index = al.authors_count_same_string(input_string, 0)
+	assert_equal(output_index, expected_index, "The obtained response is different from the expected one")
+
+# -------------------------------- PREPARE AUTHORS RSS TESTS --------------------------------
+
+# test that the authors list is not cut if the number of authors is less or equal to the desired one
+def test_prepare_authors_field_RSS_no_cut():
+
+	input_string = u'Mario, Gianni, Alberto'
+	expected_string = u'Mario, Gianni, Alberto'
+	dictionary = {'a' : 1 , 'b' : 'hi', 'author' : input_string}
+
+	output_string = al.prepare_authors_field_RSS(dictionary, 3)
+	assert_equal(output_string, expected_string, "The obtained response is different from the expected one")
+
+	output_string = al.prepare_authors_field_RSS(dictionary, 10)
+	assert_equal(output_string, expected_string, "The obtained response is different from the expected one")
+
+# test that the authors list is cut if the number of authors is bigger than the desired one
+def test_prepare_authors_field_RSS_cut():
+
+	input_string = u'Mario, Gianni, Alberto'
+	dictionary = {'a' : 1 , 'b' : 'hi', 'author' : input_string}
+
+	expected_string = u'Mario, Gianni, et al.'
+	output_string = al.prepare_authors_field_RSS(dictionary, 2)
+	assert_equal(output_string, expected_string, "The obtained response is different from the expected one")
+
+	expected_string = u'Mario, et al.'
+	output_string = al.prepare_authors_field_RSS(dictionary, 1)
+	assert_equal(output_string, expected_string, "The obtained response is different from the expected one")
+
+# test that the author list is left invariant if we pass a 0 max_authors
+def test_prepare_authors_field_RSS_zero():
+
+	input_string = u'Mario, Gianni, Alberto'
+	expected_string = u'Mario, Gianni, Alberto'
+	dictionary = {'a' : 1 , 'b' : 'hi', 'author' : input_string}
+
+	output_string = al.prepare_authors_field_RSS(dictionary, 0)
+	assert_equal(output_string, expected_string, "The obtained response is different from the expected one")
+
+# -------------------------------- PREPARE AUTHORS API TESTS --------------------------------
+
+# when the author field is not there, prepare_authors_field_API should give None
+def test_prepare_authors_field_API_no_entry():
 
 	dictionary = {'a' : 1 , 'b' : 'hi'}
 
-	element = al.compact_authors(dictionary, 100)
+	element = al.prepare_authors_field_API(dictionary, 100)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
-# when the author field is not a list, compact_authors should give None
-def test_compact_authors_no_list():
+# when the author field is not a list, prepare_authors_field_API should give None
+def test_prepare_authors_field_API_no_list():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : 2}
 
-	element = al.compact_authors(dictionary, 100)
+	element = al.prepare_authors_field_API(dictionary, 100)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
 # when the author field is a list of authors, but they do not have the field 'name'
-def test_compact_authors_no_name():
+def test_prepare_authors_field_API_no_name():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : [{'c' : 1},{'d' : False}] }
 
-	element = al.compact_authors(dictionary, 100)
+	element = al.prepare_authors_field_API(dictionary, 100)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
 # when the author field is a list of authors, each of them with 'name', but they are not strings
-def test_compact_authors_no_strings():
+def test_prepare_authors_field_API_no_strings():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : [{'name' : 1},{'name' : False}] }
 
-	element = al.compact_authors(dictionary, 100)
+	element = al.prepare_authors_field_API(dictionary, 100)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
 # when the author field is a list of authors, each of them with 'name', and a Unicode string associated to it
-def test_compact_authors_correct():
+def test_prepare_authors_field_API_correct():
 
 	dictionary = {'a' : 1 , 'b' : 'hi',
 			      'authors' : [{'name' : unicode('Carlo Sparaciari', "utf-8")},
@@ -536,14 +696,14 @@ def test_compact_authors_correct():
 							  ]
 			     }
 
-	element = al.compact_authors(dictionary, 100)
+	element = al.prepare_authors_field_API(dictionary, 100)
 
 	expected_element = unicode('Carlo Sparaciari, Thomas Galley' , "utf-8")
 
 	assert_equal(element, expected_element, "The obtained response is different from the expected one")
 
 # when the authors are more than expected, cut the list and replace with 'et al.'
-def test_compact_authors_cut_number():
+def test_prepare_authors_field_API_cut_number():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'authors' : [{'name' : unicode('Carlo Sparaciari', "utf-8")},
 							   						 {'name' : unicode('Thomas Galley', "utf-8")},
@@ -558,7 +718,7 @@ def test_compact_authors_cut_number():
 
 	max_number_authors = range(1,4)
 	for expected_string, max_number in zip(expected_strings, max_number_authors):
-		obtained_string = al.compact_authors(dictionary, max_number)
+		obtained_string = al.prepare_authors_field_API(dictionary, max_number)
 		assert_equal(expected_string, obtained_string, "The obtained string is different from the expected one")
 
 # ---------------------------------- FIND YEAR TESTS ----------------------------------
