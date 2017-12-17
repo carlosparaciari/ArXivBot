@@ -55,15 +55,15 @@ def test_simple_search_no_arguments():
 	link = 'http://export.arxiv.org/api/query?search_query='	
 
 	with assert_raises(NoArgumentError):
-		al.simple_search(False, link)
+		al.simple_search(False, link, 0, 10)
 
 # when the simple search returns the correct link for a string argument
 def test_simple_search_correctness_str():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
-	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron'
+	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron&start=0&max_results=10'
 
-	obtained_link = al.simple_search('electron', link)
+	obtained_link = al.simple_search('electron', link, 0, 10)
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
@@ -71,9 +71,9 @@ def test_simple_search_correctness_str():
 def test_simple_search_correctness_unicode():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
-	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron'
+	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron&start=0&max_results=10'
 
-	obtained_link = al.simple_search(u'electron', link)
+	obtained_link = al.simple_search(u'electron', link, 0, 10)
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
@@ -81,9 +81,9 @@ def test_simple_search_correctness_unicode():
 def test_simple_search_correctness_str_list():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
-	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron+AND+all:proton'
+	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron+AND+all:proton&start=0&max_results=10'
 
-	obtained_link = al.simple_search(['electron', 'proton'], link)
+	obtained_link = al.simple_search(['electron', 'proton'], link, 0, 10)
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
@@ -91,9 +91,9 @@ def test_simple_search_correctness_str_list():
 def test_simple_search_correctness_unicode_list():
 
 	link = 'http://export.arxiv.org/api/query?search_query='
-	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron+AND+all:proton'
+	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron+AND+all:proton&start=0&max_results=10'
 
-	obtained_link = al.simple_search([u'electron', u'proton'], link)
+	obtained_link = al.simple_search([u'electron', u'proton'], link, 0, 10)
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 

@@ -410,12 +410,14 @@ def advanced_search(author, title, abstract, comment, jref, category, rnum, iden
 # or a list of strings. If nothing is passed, the search is not performed.
 # Returns the link for the call to arXiv
 
-def simple_search(words, arxiv_search_link):
+def simple_search(words, arxiv_search_link, start_num, max_num):
 
 	# Initialising constant values for the search
 	connector = '+AND+'
 	length_check = len(arxiv_search_link)
 	key = 'all:'
+	start_opt = '&start='
+	max_opt = '&max_results='
 
 	# If the argument is a list of words, iterate over it
 	if isinstance(words, list):
@@ -433,5 +435,8 @@ def simple_search(words, arxiv_search_link):
 
 	# Remove last connector from the search
 	arxiv_search_link = arxiv_search_link[: - len(connector) ]
+
+	# Add the options defining which results to show
+	arxiv_search_link += start_opt + str(start_num) + max_opt + str(max_num)
 
 	return arxiv_search_link

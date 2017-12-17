@@ -133,10 +133,10 @@ class ArxivBot(telepot.Bot):
 	# NOTICE : No more than 10 results are shown due to the limitations on the screen of mobile phones.
 	# 		   The user is nevertheless advised to refine the search if more than 10 results are obtained.
 
-	def do_easy_search(self, argument, chat_identity):
+	def do_easy_search(self, argument, chat_identity, start_num = 0, max_num = 10):
 
 		try:
-			easy_search_link = al.simple_search(argument, self.arxiv_search_link)
+			easy_search_link = al.simple_search(argument, self.arxiv_search_link, start_num, max_num)
 		except NoArgumentError:
 			self.sendMessage(chat_identity, u'Please provide some arguments for the search.')
 			return None
