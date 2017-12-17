@@ -145,7 +145,7 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.single_search')
 			return None
 
-		self.search_and_reply( easy_search_link, chat_identity )
+		self.search_and_reply( easy_search_link, argument, chat_identity )
 
 		return None
 
@@ -228,7 +228,8 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.search_day_submissions')
 			return None
 
-		self.search_and_reply( today_search_link, chat_identity, self.max_result_number, 'RSS' )
+		argument = None
+		self.search_and_reply( today_search_link, argument, chat_identity, self.max_result_number, 'RSS' )
 
 		return None
 
@@ -300,7 +301,7 @@ class ArxivBot(telepot.Bot):
 	# - The identity of the chat, so as to be able to answer the call
 	# - The maximum number of result to be displayed (by default this is 10)
 
-	def search_and_reply(self, search_link, chat_identity, max_number = 10, feed_type = 'API'):
+	def search_and_reply(self, search_link, argument, chat_identity, max_number = 10, feed_type = 'API'):
 
 
 		try:
@@ -383,7 +384,7 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
 			return None
 
-		self.send_results_back(chat_identity, search_list, remaining_results)
+		self.send_results_back(chat_identity, argument, search_list, remaining_results, feed_type)
 
 		if feed_type == 'API':
 			time.sleep( self.arxiv_fair_time ) 
@@ -395,11 +396,16 @@ class ArxivBot(telepot.Bot):
 	# NOTICE: Telegram does not allow for sending messages bigger than 4096 characters,
 	#         so the method cut the message into chucks if the total number of characters is bigger. 
 
-	def send_results_back(self, chat_identity, search_list, remaining_results):
+	def send_results_back(self, chat_identity, argument, search_list, remaining_results, feed_type):
 
 		result_counter = 1
 		message_result = ''
 
+		if feed_type == 'API':
+			separator = ' '
+			keywords = separator.join(argument)
+			message_result = 'Your search keywords are:\n'+keywords+'\n\n'
+		
 		for result in search_list:
 			new_item = '<b>'+str(result_counter)+'</b>. <em>'+result['title']+'</em>\n'+result['authors']+'\n'+result['link']+'\n\n'
 			message_result = self.check_size_and_split_message(message_result, new_item, chat_identity)
