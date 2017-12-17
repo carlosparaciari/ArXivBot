@@ -14,14 +14,28 @@ from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
 # Keyboard for getting the previous/next results of a search
 
-def prev_next_keyboard():
+def search_prev_next_keyboard(start_results_from, remaining_results, number_results_shown):
 
-	keyboard = InlineKeyboardMarkup(inline_keyboard = [[
-                                                  		InlineKeyboardButton(text='Close', callback_data='close command'),
-                                                  		InlineKeyboardButton(text='Prev', callback_data='prev command'),
-                                                  		InlineKeyboardButton(text='Next', callback_data='next command'),
-                                                  	  ]]
-                                )
+	close_button = InlineKeyboardButton(text = 'Close',
+										callback_data = 'search' + ' ' + 'close'
+									   )
+
+	prev_button = InlineKeyboardButton(text = 'Prev',
+									   callback_data = 'search' + ' ' + 'previous' + ' ' + str(start_results_from - number_results_shown)
+									  )
+
+	next_button = InlineKeyboardButton(text = 'Next',
+									   callback_data = 'search' + ' ' + 'next' + ' ' + str(start_results_from + number_results_shown)
+									  )
+
+	if start_results_from == 0:
+		keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, next_button]])
+	else:
+		if remaining_results > 0:
+			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button, next_button]])
+		else:
+			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button]])
+
 	return keyboard
 
 # Class ArxivBot inherits from the telepot.Bot class (https://github.com/nickoala/telepot).
@@ -424,8 +438,15 @@ class ArxivBot(telepot.Bot):
 									)
 			message_result += remaining_information
 
-		self.send_message_safely_with_keyboard( message_result, chat_identity, prev_next_keyboard() )
-
+		if start_num == 0 and remaining_results <= 0:
+			self.send_message_safely( message_result, chat_identity )
+		else:
+			self.send_message_safely_with_keyboard( message_result, chat_identity, 
+													search_prev_next_keyboard( start_num,
+																			   remaining_results,
+																			   self.max_api_result_number
+																			 )
+												  )
 
 	# The method send_results_back_rss formats the result of the today RSS feed and send it to the user.
 	#
