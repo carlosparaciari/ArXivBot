@@ -17,7 +17,7 @@ from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 def search_prev_next_keyboard(start_results_from, remaining_results, number_results_shown):
 
 	close_button = InlineKeyboardButton(text = 'Close',
-										callback_data = 'search' + ' ' + 'close'
+										callback_data = 'search' + ' ' + 'close' + ' ' + 'None'
 									   )
 
 	prev_button = InlineKeyboardButton(text = 'Prev',
@@ -28,10 +28,12 @@ def search_prev_next_keyboard(start_results_from, remaining_results, number_resu
 									   callback_data = 'search' + ' ' + 'next' + ' ' + str(start_results_from + number_results_shown)
 									  )
 
+	results_to_be_shown = remaining_results - ( start_results_from + number_results_shown )
+
 	if start_results_from == 0:
 		keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, next_button]])
 	else:
-		if remaining_results > 0:
+		if results_to_be_shown > 0:
 			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button, next_button]])
 		else:
 			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button]])
@@ -152,6 +154,51 @@ class ArxivBot(telepot.Bot):
 		else:
 			self.sendMessage(chat_id, u'See the /help for information on this Bot!')
 
+	# The handle_callback_query method is called by the handle method when the
+	# "flavour" of the message is 'callback_query'. The message is a of this flavour
+	# when the user uses the inline keyboard to search for new results of their
+	# search.
+	#
+	# NOTE: at the moment, this bot will receive callback queries only when the
+	#       user is looking at the results of a simple search, and want to move
+	#       to other results (the previous or the next ones)
+
+	def handle_callback_query(self, msg):
+
+		query_id, chat_id, query_data = telepot.glance(msg, 'callback_query')
+		msg_identifier = telepot.origin_identifier(msg)
+
+		self.save_message_details_log( chat_id, query_id )
+		self.save_message_content_log( query_data )
+
+		try:
+			function, command, new_start = query_data.split()
+		except ValueError as VE:
+			self.sendMessage(chat_id, u'We are experiencing some technical problems, sorry!')
+			self.save_known_error_log(chat_id, VE)
+			return None
+		except:
+			self.sendMessage(chat_id, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_id, 'arxiv_bot.handle_callback_query')
+			return None
+
+		if function == 'search':
+			if command == 'close':
+				self.editMessageReplyMarkup(msg_identifier, reply_markup=None)
+				return None
+
+			msg_content = msg['message']['text']
+			left_key = 'Your search keywords are:\n'
+			right_key = '\n\n'
+
+			keywords = self.find_current_keywords(msg_content, left_key, right_key)
+			new_start = int(new_start)
+
+			self.do_easy_search( keywords, chat_id, start_number = new_start, msg_id = msg_identifier)
+		else:
+			self.sendMessage(chat_id, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_id, 'arxiv_bot.handle_callback_query')
+
 	# The do_easy_search method is used when the user calls the /search command.
 	# The methods takes as input
 	#
@@ -164,7 +211,7 @@ class ArxivBot(telepot.Bot):
 	# NOTICE : No more than 10 results are shown due to the limitations on the screen of mobile phones.
 	# 		   The user is nevertheless advised to refine the search if more than 10 results are obtained.
 
-	def do_easy_search(self, argument, chat_identity, start_number = 0):
+	def do_easy_search(self, argument, chat_identity, start_number = 0, msg_id = None):
 
 		if len(argument) > self.max_number_keywords:
 			message = 'Please use less than ' + str(self.max_number_keywords) + ' keywords for your search.'
@@ -172,8 +219,7 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		try:
-			end_num = start_number + self.max_api_result_number
-			easy_search_link = al.simple_search(argument, self.arxiv_search_link, start_number, end_num)
+			easy_search_link = al.simple_search(argument, self.arxiv_search_link, start_number, self.max_api_result_number)
 		except NoArgumentError:
 			self.sendMessage(chat_identity, u'Please provide some arguments for the search.')
 			return None
@@ -182,7 +228,7 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.single_search')
 			return None
 
-		self.search_and_reply( easy_search_link, chat_identity, keywords = argument, start_num = start_number )
+		self.search_and_reply( easy_search_link, chat_identity, msg_id, keywords = argument, start_num = start_number)
 
 		return None
 
@@ -337,7 +383,7 @@ class ArxivBot(telepot.Bot):
 	# - The identity of the chat, so as to be able to answer the call
 	# - The maximum number of result to be displayed (by default this is 10)
 
-	def search_and_reply(self, search_link, chat_identity, keywords = None, start_num = None, feed_type = 'API'):
+	def search_and_reply(self, search_link, chat_identity, msg_id, keywords = None, start_num = None, feed_type = 'API'):
 
 		try:
 			search_response = al.request_to_arxiv(search_link)
@@ -408,7 +454,7 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		if feed_type == 'API':
-			self.send_results_back_api(chat_identity, keywords, start_num, search_list, remaining_results)
+			self.send_results_back_api(chat_identity, msg_id, keywords, start_num, search_list, remaining_results)
 			time.sleep( self.arxiv_fair_time )
 		else:
 			self.send_results_back_rss(chat_identity, search_list, remaining_results)
@@ -420,7 +466,7 @@ class ArxivBot(telepot.Bot):
 	# NOTICE: Since only 10 results can be shown, we do not have to worry about exceeding the size
 	#         limit for the message.
 
-	def send_results_back_api(self, chat_identity, argument, start_num, search_list, remaining_results):
+	def send_results_back_api(self, chat_identity, msg_id, argument, start_num, search_list, remaining_results):
 
 		result_counter = start_num + 1
 		separator = ' '
@@ -441,7 +487,14 @@ class ArxivBot(telepot.Bot):
 		if start_num == 0 and remaining_results <= 0:
 			self.send_message_safely( message_result, chat_identity )
 		else:
-			self.send_message_safely_with_keyboard( message_result, chat_identity, 
+			if msg_id == None:
+				send_method = self.sendMessage
+				identity = chat_identity
+			else:
+				send_method = self.editMessageText
+				identity = msg_id
+
+			self.send_message_safely_with_keyboard( send_method, message_result, identity, 
 													search_prev_next_keyboard( start_num,
 																			   remaining_results,
 																			   self.max_api_result_number
@@ -492,22 +545,30 @@ class ArxivBot(telepot.Bot):
 		except telepot.exception.TelegramError as TeleE:
 			self.sendMessage(chat_identity, u"Telegram is messing around with the results, we'll have a look into this. Sorry!")
 			self.save_known_error_log(chat_identity, TeleE)
+		except telepot.exception.TooManyRequestsError as TooE:
+			self.sendMessage(chat_identity, u"ArXivBot is receiving too many requests at the moment. Please try later")
+			self.save_known_error_log(chat_identity, TooE)
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
 
-	# Send message safely adding an inline keyboard.
+	# Send or edit the message safely adding an inline keyboard.
+	# The way in which we are going to provide new information
+	# depend on the argument send_method.
 
-	def send_message_safely_with_keyboard(self, message, chat_identity, keyboard):
+	def send_message_safely_with_keyboard(self, send_method, message, identity, keyboard):
 
 		try:
-			self.sendMessage(chat_identity, message, parse_mode='HTML', reply_markup=keyboard)
+			send_method(identity, message, parse_mode='HTML', reply_markup=keyboard)
 		except telepot.exception.TelegramError as TeleE:
-			self.sendMessage(chat_identity, u"Telegram is messing around with the results, we'll have a look into this. Sorry!")
-			self.save_known_error_log(chat_identity, TeleE)
+			send_method(identity, u"Telegram is messing around with the results, we'll have a look into this. Sorry!")
+			self.save_known_error_log(identity, TeleE)
+		except telepot.exception.TooManyRequestsError as TooE:
+			send_method(identity, u"ArXivBot is receiving too many requests at the moment. Please try later")
+			self.save_known_error_log(identity, TooE)
 		except:
-			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
+			send_method(identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(identity, 'arxiv_lib.total_number_results')
 
 	# Search in the preference database for the chat_id of the user.
 	# If it is found, return True, otherwise return False
@@ -577,6 +638,21 @@ class ArxivBot(telepot.Bot):
 			return True
 		return False
 
+	# The find_current_keywords method is used to search for the keywords
+	# present in a message text showing the results of a given search.
+	# The content of the message, together with the left and right delimiters
+	# around the keywords, are passed to the method. 
+
+	def find_current_keywords(self, message_content, left_key, right_key):
+
+		keywords_start = message_content.index( left_key ) + len( left_key )
+		keywords_end = message_content.index( right_key, keywords_start )
+
+		keywords = message_content[ keywords_start : keywords_end ]
+		keywords = keywords.split()
+
+		return keywords
+
 	# Saves the feedback message in a log file.
 
 	def save_feedback(self, chat_identity, argument):
@@ -625,10 +701,6 @@ class ArxivBot(telepot.Bot):
 			errlog.write(error_string)
 
 	# --- TO BE IMPLEMENTED IN THE FUTURE (MAYBE?) ---
-
-	def handle_callback_query(self, msg):
-
-		message_id, from_id, message_data = telepot.glance(msg, 'callback_query')
 
 	def handle_inline_query(self, msg):
 
