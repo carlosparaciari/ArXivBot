@@ -10,36 +10,6 @@ import emoji_detect as emjd
 from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, NoCategoryError
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Inline keyboard functions for interacting with the results provided by the bot.
-
-# Keyboard for getting the previous/next results of a search
-
-def search_prev_next_keyboard(start_results_from, remaining_results, number_results_shown):
-
-	close_button = InlineKeyboardButton(text = 'Close',
-										callback_data = 'search' + ' ' + 'close' + ' ' + 'None'
-									   )
-
-	prev_button = InlineKeyboardButton(text = 'Prev',
-									   callback_data = 'search' + ' ' + 'previous' + ' ' + str(start_results_from - number_results_shown)
-									  )
-
-	next_button = InlineKeyboardButton(text = 'Next',
-									   callback_data = 'search' + ' ' + 'next' + ' ' + str(start_results_from + number_results_shown)
-									  )
-
-	results_to_be_shown = remaining_results - ( start_results_from + number_results_shown )
-
-	if start_results_from == 0:
-		keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, next_button]])
-	else:
-		if results_to_be_shown > 0:
-			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button, next_button]])
-		else:
-			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button]])
-
-	return keyboard
-
 # Class ArxivBot inherits from the telepot.Bot class (https://github.com/nickoala/telepot).
 # The class is used to deal with the messages received by the bot on Telegram,
 # and to perform simple searches on the arXiv website.
@@ -228,7 +198,9 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.single_search')
 			return None
 
-		self.search_and_reply( easy_search_link, chat_identity, msg_id, keywords = argument, start_num = start_number)
+		search_list, total_results = self.search_and_format( easy_search_link, chat_identity)
+		self.send_results_back_api(chat_identity, msg_id, argument, start_number, search_list, total_results)
+		time.sleep( self.arxiv_fair_time )
 
 		return None
 
@@ -311,7 +283,13 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.search_day_submissions')
 			return None
 
-		self.search_and_reply( today_search_link, chat_identity, feed_type = 'RSS' )
+		search_list, total_results = self.search_and_format( today_search_link, chat_identity, feed_type = 'RSS' )
+
+		total_results = len(search_list)
+		search_list = search_list[:self.max_rss_result_number]
+		remaining_results = total_results - self.max_rss_result_number
+
+		self.send_results_back_rss(chat_identity, search_list, remaining_results)
 
 		return None
 
@@ -374,16 +352,16 @@ class ArxivBot(telepot.Bot):
 
 		return None
 
-	# The search_and_reply method is used in the other search methods to
-	# send the request to the arXiv, parse the result, and send it to the user.
+	# The search_and_format method is used in the other search methods to
+	# send the request to the arXiv, parse the result, and format it accordingly.
 	# 
 	# The methods takes as input
 	#
 	# - The arXiv link for the request
 	# - The identity of the chat, so as to be able to answer the call
-	# - The maximum number of result to be displayed (by default this is 10)
+	# - The type of feed the method has to process (can be either API or RSS). Feed API is default.
 
-	def search_and_reply(self, search_link, chat_identity, msg_id, keywords = None, start_num = None, feed_type = 'API'):
+	def search_and_format(self, search_link, chat_identity, feed_type = 'API'):
 
 		try:
 			search_response = al.request_to_arxiv(search_link)
@@ -433,40 +411,32 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.parse_response')
 			return None
 
-		try:
-			if feed_type == 'API':
-				total_results = al.total_number_results( search_dictionary )
-			else:
-				total_results = len(search_list)
-				search_list = search_list[:self.max_rss_result_number]
-			remaining_results = total_results - self.max_rss_result_number
-		except NoArgumentError as NAE:
-			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
-			self.save_known_error_log(chat_identity, NAE)
-			return None
-		except TypeError as TE:
-			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
-			self.save_known_error_log(chat_identity, TE)
-			return None
-		except:
-			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
-			return None
+		total_results = None
 
 		if feed_type == 'API':
-			self.send_results_back_api(chat_identity, msg_id, keywords, start_num, search_list, remaining_results)
-			time.sleep( self.arxiv_fair_time )
-		else:
-			self.send_results_back_rss(chat_identity, search_list, remaining_results)
+			try:
+				total_results = al.total_number_results( search_dictionary )
+			except NoArgumentError as NAE:
+				self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+				self.save_known_error_log(chat_identity, NAE)
+				return None
+			except TypeError as TE:
+				self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+				self.save_known_error_log(chat_identity, TE)
+				return None
+			except:
+				self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+				self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
+				return None
 
-		return None
+		return search_list, total_results
 
 	# The method send_results_back_api formats the result of the search and send it to the user.
 	#
 	# NOTICE: Since only 10 results can be shown, we do not have to worry about exceeding the size
 	#         limit for the message.
 
-	def send_results_back_api(self, chat_identity, msg_id, argument, start_num, search_list, remaining_results):
+	def send_results_back_api(self, chat_identity, msg_id, argument, start_num, search_list, total_results):
 
 		result_counter = start_num + 1
 		separator = ' '
@@ -478,14 +448,12 @@ class ArxivBot(telepot.Bot):
 			message_result += new_item
 			result_counter += 1
 		
-		if remaining_results > 0:
-			remaining_information = ('There are ' + str(remaining_results) + ' remaining results.\n'
-									 'Consider refining your search, or visit the arXiv web-page.'
-									)
-			message_result += remaining_information
+		if total_results > self.max_api_result_number:
+			total_number_info = 'There are ' + str(total_results) + ' results associated with this search.'
+			message_result += total_number_info
 
-		if start_num == 0 and remaining_results <= 0:
-			self.send_message_safely( message_result, chat_identity )
+		if start_num == 0 and total_results <= self.max_api_result_number:
+			self.send_message_safely( self.sendMessage, message_result, chat_identity )
 		else:
 			if msg_id == None:
 				send_method = self.sendMessage
@@ -494,12 +462,8 @@ class ArxivBot(telepot.Bot):
 				send_method = self.editMessageText
 				identity = msg_id
 
-			self.send_message_safely_with_keyboard( send_method, message_result, identity, 
-													search_prev_next_keyboard( start_num,
-																			   remaining_results,
-																			   self.max_api_result_number
-																			 )
-												  )
+			keyboard = search_prev_next_keyboard( start_num, total_results, self.max_api_result_number )
+			self.send_message_safely( send_method, message_result, identity, keyboard )
 
 	# The method send_results_back_rss formats the result of the today RSS feed and send it to the user.
 	#
@@ -522,7 +486,7 @@ class ArxivBot(telepot.Bot):
 									)
 			message_result = self.check_size_and_split_message(message_result, remaining_information, chat_identity)
 
-		self.send_message_safely( message_result, chat_identity )
+		self.send_message_safely( self.sendMessage, message_result, chat_identity )
 
 	# The method checks the length of the message, and divides it if the maximum number of characters is exceeded.
 
@@ -530,42 +494,30 @@ class ArxivBot(telepot.Bot):
 
 		message_would_exceed = len(message) + len(new_item) >= self.max_characters_chat
 		if message_would_exceed:
-			self.send_message_safely( message, chat_identity )
+			self.send_message_safely( self.sendMessage, message, chat_identity )
 			message = ''
 		message += new_item
 
 		return message
 
-	# Send message safely.
+	# Send or edit the message safely, with the possibility of adding an inline keyboard.
+	# This method takes as arguments:
+	#
+	# send_method : the function to be used to send/modify the message
+	# message : the message itself
+	# identity : it can be chat_identity if we send, or msg_identifier if we edit
+	# keyboard : optional
 
-	def send_message_safely(self, message, chat_identity):
-
-		try:
-			self.sendMessage(chat_identity, message, parse_mode='HTML')
-		except telepot.exception.TelegramError as TeleE:
-			self.sendMessage(chat_identity, u"Telegram is messing around with the results, we'll have a look into this. Sorry!")
-			self.save_known_error_log(chat_identity, TeleE)
-		except telepot.exception.TooManyRequestsError as TooE:
-			self.sendMessage(chat_identity, u"ArXivBot is receiving too many requests at the moment. Please try later")
-			self.save_known_error_log(chat_identity, TooE)
-		except:
-			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
-
-	# Send or edit the message safely adding an inline keyboard.
-	# The way in which we are going to provide new information
-	# depend on the argument send_method.
-
-	def send_message_safely_with_keyboard(self, send_method, message, identity, keyboard):
+	def send_message_safely(self, send_method, message, identity, keyboard = None):
 
 		try:
 			send_method(identity, message, parse_mode='HTML', reply_markup=keyboard)
+		except telepot.exception.TooManyRequestsError as TooE:
+			send_method(identity, u"ArXivBot is receiving too many requests at the moment. Please try later!")
+			self.save_known_error_log(identity, TooE)
 		except telepot.exception.TelegramError as TeleE:
 			send_method(identity, u"Telegram is messing around with the results, we'll have a look into this. Sorry!")
 			self.save_known_error_log(identity, TeleE)
-		except telepot.exception.TooManyRequestsError as TooE:
-			send_method(identity, u"ArXivBot is receiving too many requests at the moment. Please try later")
-			self.save_known_error_log(identity, TooE)
 		except:
 			send_method(identity, u'An unknown error occurred. \U0001F631')
 			self.save_unknown_error_log(identity, 'arxiv_lib.total_number_results')
@@ -715,3 +667,35 @@ class ArxivBot(telepot.Bot):
 	def do_advanced_search(self):
 		
 		return None
+
+# -----------------------------------------------------------------------------------------------------------------
+
+# Inline keyboard functions for interacting with the results provided by the bot.
+
+# Keyboard for getting the previous/next results of a search
+
+def search_prev_next_keyboard(start_results_from, total_results, number_results_shown):
+
+	close_button = InlineKeyboardButton(text = 'Close',
+										callback_data = 'search' + ' ' + 'close' + ' ' + 'None'
+									   )
+
+	prev_button = InlineKeyboardButton(text = 'Prev',
+									   callback_data = 'search' + ' ' + 'previous' + ' ' + str(start_results_from - number_results_shown)
+									  )
+
+	next_button = InlineKeyboardButton(text = 'Next',
+									   callback_data = 'search' + ' ' + 'next' + ' ' + str(start_results_from + number_results_shown)
+									  )
+
+	results_to_be_shown = total_results - ( start_results_from + number_results_shown )
+
+	if start_results_from == 0:
+		keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, next_button]])
+	else:
+		if results_to_be_shown > 0:
+			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button, next_button]])
+		else:
+			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button]])
+
+	return keyboard
