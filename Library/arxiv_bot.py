@@ -574,7 +574,9 @@ class ArxivBot(telepot.Bot):
 		except telepot.exception.TooManyRequestsError as TooE:
 			self.answerCallbackQuery(query_identity, text=u"You can only make 20 requests per minutes. Please try later!")
 		except telepot.exception.TelegramError as TeleE:
-			self.editMessageText(msg_identifier, u"Telegram is messing around with the results, we'll have a look into this. Sorry!")
+			# This error is triggered by the user when the next/prev button is clicked
+			# too many times in a short period. By not doing anything we obtain the correct
+			# behaviour from the bot.
 			self.save_known_error_log(query_identity, TeleE)
 		except:
 			self.editMessageText(msg_identifier, u'An unknown error occurred. \U0001F631')
