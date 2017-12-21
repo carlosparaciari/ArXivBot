@@ -4,10 +4,16 @@ import feedparser
 import sys, os
 import cgi
 import bs4
-import today_lib as tl
 
-# MODULE-SCOPE VARIABLE
+## @package Library.arxiv_lib
+#  Small library for making requests to the arXiv and parsing the results.
+#
+#  This library provides some methods to send requests to the arXiv (using their API),
+#  and to parse and format the results. The library includes methods to perform simple
+#  searches on the arXiv, as well as to read the daily RSS feeds, and to parse and extract
+#  the relevant information to be sent to the users.
 
+## List of all the categories of the arXiv.
 ALL_CATEGORIES = ['stat.AP', 'stat.CO', 'stat.ML', 'stat.ME', 'stat.OT', 'stat.TH', 'stat', 'q-fin.PR', 'q-fin.RM', 'q-fin.PM', 'q-fin.TR',
 'q-fin.MF', 'q-fin.CP', 'q-fin.ST', 'q-fin.GN', 'q-fin.EC', 'q-fin', 'q-bio.BM', 'q-bio.GN', 'q-bio.MN', 'q-bio.SC', 'q-bio.CB', 'q-bio.NC',
 'q-bio', 'q-bio.TO', 'q-bio.PE', 'q-bio.QM', 'q-bio.OT', 'cs.AI', 'cs.CL', 'cs.CC', 'cs.CE', 'cs.CG', 'cs.GT', 'cs.CV', 'cs.CY', 'cs.CR',
@@ -23,16 +29,14 @@ ALL_CATEGORIES = ['stat.AP', 'stat.CO', 'stat.ML', 'stat.ME', 'stat.OT', 'stat.T
 'math.AC', 'math.CV', 'math.DG', 'math.DS', 'math.FA', 'math.GM', 'math.GN', 'math.GT', 'math.GR', 'math.HO', 'math.IT', 'math.KT', 'math.LO',
 'math.MP', 'math.MG', 'math.NT', 'math.NA', 'math.OA', 'math.OC', 'math.PR', 'math.QA', 'math.RT', 'math.RA', 'math.SP', 'math.ST', 'math.SG']
 
-# MODULE METHODS
-
-# This method returns the number of available arXiv categories.
-
+## This function returns the number of available arXiv categories.
 def number_categories():
 
 	return len( ALL_CATEGORIES )
 
-# This method takes an integer i and returns the i-th category in the list ALL_CATEGORY.
-
+## This function takes an integer \f$i\f$ and returns the \f$i\f$-th category in the list ALL_CATEGORY.
+#
+#  @param category_index Integer number
 def single_category(category_index):
 
 	if not isinstance(category_index, int):
@@ -43,20 +47,17 @@ def single_category(category_index):
 	else:
 		raise IndexError('The module-scope list ALL_CATEGORY has no element ' + str(category_index) + '.')
 
-# Review response, it will review the dictionary obtained from parse_response
-# and pass the following information for each entries:
+## This function reviews the dictionary obtained from parse_response and returns title, author and link for each entry.
 #
-# - title
-# - authors
-# - link
+#  Only title, author and link are passed since they will go to the Telegram Bot.
+#  The output of this function is therefore a list of dictionary with these entries.
+#  Two different behaviours are expected from this function, depending on the
+#  value of feed_type, which can be API or RSS (the first is used for searches,
+#  the second for new submissions)
 #
-# Only these information are passed since they will go to the Telegram Bot.
-# The return argument is a list of dictionary with these entries.
-#
-# Two different behaviours are expected from this function, depending on the
-# value of feed_type, which can be API or RSS (the first is used for searches,
-# the second for new submissions)
-
+#  @param dictionary This is the output of the function @ref parse_response
+#  @param max_number_authors The maximum number of authors to be shown (then they are replaced by 'et al.')
+#  @param feed_type The type of feed to review (can be API or RSS)
 def review_response(dictionary, max_number_authors, feed_type):
 
 	results_list = []
@@ -105,10 +106,12 @@ def review_response(dictionary, max_number_authors, feed_type):
 	
 	return results_list
 
-# This function is needed for the review_response.
-# It removes the newline symbols \n from the title.
-# It also escape the HTML symbols <, >, &, so that they are correctly interpreted by telepot.send_message().
-
+## This function formats the title, and is needed for the review_response.
+#
+#  This function removes the newline symbols \n from the title, and escapes the
+#  HTML symbols <, >, &, so that they are correctly interpreted by telepot.send_message().
+#
+#  @param dictionary This is the output of the function @ref parse_response
 def prepare_title_field_API(dictionary):
 
 	title = is_field_there(dictionary, 'title')
@@ -121,10 +124,13 @@ def prepare_title_field_API(dictionary):
 	else:
 		return None
 
-# This function is needed for the review_response.
-# It unifies the name of the authors in a single one, and return a Unicode string (if there are some authors).
-# It also cuts the number of authors after max_number_authors, and replaces the remaining with 'et al.'
-
+## This function formats the authors, and is needed for the review_response.
+#
+#  This function unifies the name of the authors in a single one, and returns a Unicode string (if there are some authors).
+#  It also cuts the number of authors after max_number_authors, and replaces the remaining with 'et al.'
+#
+#  @param dictionary This is the output of the function @ref parse_response
+#  @param max_number_authors The maximum number of authors to be shown (then they are replaced by 'et al.')
 def prepare_authors_field_API(dictionary, max_number_authors):
 
 	authors_list = is_field_there(dictionary, 'authors')
@@ -151,11 +157,12 @@ def prepare_authors_field_API(dictionary, max_number_authors):
 		authors_string = authors_string[: -2]
 		return authors_string
 
-# This function is needed for the review_response.
-# This function prepares the title field after receiving an entry from the RSS feed.
-# The main difference with the API search is the presence of the arXiv id, which is removed.
-# It takes a dictionary, returns a unicode string.
-
+## This function prepares the title, and is needed for the review_response.
+#
+#  This function prepares the title field after receiving an entry from the RSS feed.
+#  The main difference with the API search is the presence of the arXiv id, which is removed.
+#
+#  @param dictionary This is the output of the function @ref parse_response
 def prepare_title_field_RSS(dictionary):
 
 	title = prepare_title_field_API(dictionary)
@@ -166,12 +173,15 @@ def prepare_title_field_RSS(dictionary):
 	
 	return title
 
-# This function is needed for the review_response.
-# This function prepares the authors field after receiving an entry from the RSS feed.
-# The function is different from the one used for standard search feeds as the authors
-# are given in a single line and hyper links are present. This function remove hyper links
-# and cut the number of authors if they are more than a maximum value
-
+## This function formats the authors, and is needed for the review_response.
+#
+#  This function prepares the authors field after receiving an entry from the RSS feed.
+#  The function is different from the one used for standard search feeds as the authors
+#  are given in a single line and hyper links are present. This function remove hyper links
+#  and cut the number of authors if they are more than a maximum value
+#
+#  @param dictionary This is the output of the function @ref parse_response
+#  @param max_number_authors The maximum number of authors to be shown (then they are replaced by 'et al.')
 def prepare_authors_field_RSS(dictionary, max_number_authors):
 
 	authors_string = is_field_there(dictionary, 'author')
@@ -185,10 +195,12 @@ def prepare_authors_field_RSS(dictionary, max_number_authors):
 	else:
 		return None
 
-# This function is needed for the prepare_authors_field_RSS.
-# This function removes the hyper links (<a href = ***> ... </a>) from a string,
-# and return a unicode string.
-
+## This function removes hyper links, and is needed for the prepare_authors_field_RSS.
+#
+#  This function removes the hyper links (<a href = ***> ... </a>) from a string,
+#  and return a unicode string.
+#
+#  @param string A string with hyper links inside
 def remove_hyperlinks(string):
 
 	bs_string = bs4.BeautifulSoup(string, 'html.parser')
@@ -198,10 +210,13 @@ def remove_hyperlinks(string):
 
 	return unicode( str( bs_string ) , "utf-8")
 
-# This function is needed for the prepare_authors_field_RSS.
-# This function finds the position of the "max_number_authors"-th comma in the string,
-# and returns it. If this comma doesn't exist, return -1.
-
+## This function finds where to put 'et al.' in the author string, and is needed for the prepare_authors_field_RSS.
+#
+#  This function finds the position of the "max_number_authors"-th comma in the string,
+#  and returns it. If this comma doesn't exist, return -1.
+#
+#  @param authors_string A string with all the authors
+#  @param max_number_authors The maximum number of authors to be shown (then they are replaced by 'et al.')
 def authors_count_same_string(authors_string, max_number_authors):
 
 	index = -1
@@ -213,11 +228,12 @@ def authors_count_same_string(authors_string, max_number_authors):
 
 	return index
 
-# This function is needed for the review_response.
-# Check if the entry is an update of a previous version of the paper.
-# Return True if it is, and False if is not.
-# If the title field is absent, returns True.
-
+## This function checks whether the entry is new or updated, and is needed for the @ref review_response function.
+#
+#  This function checks if the entry is an update of a previous version of the paper.
+#  Return True if it is, and False if is not. If the title field is absent, returns True.
+#
+#  @param dictionary This is the output of the function @ref parse_response
 def is_update( dictionary ):
 
 	title = is_field_there(dictionary, 'title')
@@ -229,8 +245,9 @@ def is_update( dictionary ):
 				
 	return True
 
-# This function returns the total number of results of the search.
-
+## This function returns the total number of results in the search.
+#
+#  @param dictionary This is the output of the function @ref parse_response
 def total_number_results(dictionary):
 
 	if not isinstance(dictionary, dict):
@@ -251,9 +268,12 @@ def total_number_results(dictionary):
 
 	return int(total_results)
 
-# This function is needed for the review_response.
-# It checks that the dictionary has something associated to the key, and if not, it returns None.
-
+## This function checks if a key is inside a dictionary, and is needed for the @ref review_response function.
+#
+#  This function checks that the dictionary has something associated to the key, and if not, it returns None.
+#
+#  @param dictionary This is the output of the function @ref parse_response
+#  @param key This is a key which might be in the dictionary
 def is_field_there(dictionary, key):
 
 	try:
@@ -261,9 +281,9 @@ def is_field_there(dictionary, key):
 	except:
 		return None
 
-# This function is needed for the review_response.
-# For a given date, it returns the year.
-
+## This function finds the year of a given entry, and is needed for the @ref review_response function.
+#
+#  @param dictionary This is the output of the function @ref parse_response
 def find_year(dictionary):
 
 	date = is_field_there(dictionary, 'date')
@@ -274,10 +294,12 @@ def find_year(dictionary):
 	else:
 		return None
 
-# Parse the response. It modifies the response obtained by the request library
-# making it a raw data (string). Then, it parse it using FeedParser.
-# It returns a dictionary.
-
+## This function parses the output of the @ref request_to_arxiv function.
+#
+#  This function modifies the response obtained by the request library, making it a raw data (string).
+#  Then, it parses the raw data using FeedParser, and returns a dictionary.
+#
+#  @param response This is the output of the function @ref request_to_arxiv
 def parse_response(response):
 	
 	if not isinstance(response, requests.models.Response):
@@ -289,11 +311,9 @@ def parse_response(response):
 
 	return parsed_response
 
-# Request function to communicate with the arXiv and download the informations
-# It takes a string (the link) as argument
-# Check for the main connection errors.
-# Return the response.
-
+## This function communicates with the arXiv and download the information.
+#
+#  @param arxiv_search_link The link to the arXiv website
 def request_to_arxiv(arxiv_search_link):
 
 	if not ( isinstance(arxiv_search_link, unicode) or isinstance(arxiv_search_link, str) ):
@@ -317,10 +337,12 @@ def request_to_arxiv(arxiv_search_link):
 	else:
 		return response
 
-# The function adds to the arXiv link an extra field, which specifies
-# the number of results we want to obtain. It output the link with
-# at the end the new specification.
-
+## This function adds to the arXiv link an extra field, which specifies the number of results we want to obtain.
+#
+#  **NOTE**: This function is not used any more, since @ref simple_search now takes care of this.
+#
+#  @param arxiv_search_link The link to the arXiv website
+#  @param number_of_results An integer number
 def specify_number_of_results(arxiv_search_link, number_of_results):
 
 	if number_of_results < 0:
@@ -330,10 +352,10 @@ def specify_number_of_results(arxiv_search_link, number_of_results):
 
 	return arxiv_search_link
 
-# This function search the submissions which were available to the users on the date
-# specified by the time_information, in a given category (e.g., quant-ph) specified by
-# subject_category. The function returns the arXiv link for the search.
-
+## This function adds a specific category to the arXiv RSS link.
+#
+#  @param subject_category A category of the arXiv
+#  @param arxiv_search_link The link to the arXiv website
 def search_day_submissions(subject_category, arxiv_search_link):
 
 	if not category_exists(subject_category):
@@ -343,34 +365,30 @@ def search_day_submissions(subject_category, arxiv_search_link):
 
 	return arxiv_search_link
 
-# This function checks whether the subject_category is an existing category of the arXiv,
-# and returns a boolean accordingly.
-
+## This function checks whether a category exists.
+#
+#  @param subject_category A (possible) category of the arXiv 
 def category_exists(subject_category):
 
 	return subject_category in ALL_CATEGORIES
 
-# Advanced search the arXiv.
+## This function performs an advanced search the arXiv.
 #
-# As parameter, it takes the following parameters:
+#  This function assembles the link for the request to arXiv, which will be passed
+#  to the @ref request_to_arxiv function.
+#  If a variable is not a string, it is not included in the function,
+#  But no exception is raised. Exception is raised only is the search
+#  is empty. After the query is done, the response is returned.
 #
-# au			Author
-# ti			Title
-# abs			Abstract
-# co			Comment
-# jr			Journal Reference
-# cat			Subject Category
-# rn			Report Number
-# id			Id
-# arxiv_search_link	The arXiv link where making the query
-# 
-# And it make the link for the request to arXiv, which will be passed
-# to the request_to_arxiv method.
-# 
-# If a variable is not a string, it is not included in the function,
-# But no exception is raised. Exception is raised only is the search
-# is empty. After the query is done, the response is returned.
-
+#  @param author The searched author(s)
+#  @param title The searched title
+#  @param abstract The searched abstract
+#  @param comment The searched comment
+#  @param jref The searched journal reference
+#  @param category The searched category
+#  @param rnum The searched report number
+#  @param identity The searched identity number
+#  @param arxiv_search_link The link to the arXiv website
 def advanced_search(author, title, abstract, comment, jref, category, rnum, identity, arxiv_search_link):
 
 	# Initialising constant values for the search
@@ -403,13 +421,15 @@ def advanced_search(author, title, abstract, comment, jref, category, rnum, iden
 
 	return arxiv_search_link
 
-# The simple search on the arXiv.
-# 
-# It takes the argument of the search, which is searched in the all fields,
-# such as title, author, etc. The argument of this function has to be a string,
-# or a list of strings. If nothing is passed, the search is not performed.
-# Returns the link for the call to arXiv
-
+## This function performs a simple search the arXiv.
+#
+#  This function assembles the link for the request to arXiv, which will be passed
+#  to the @ref request_to_arxiv function.
+#
+#  @param words The keywords of the search
+#  @param arxiv_search_link The link to the arXiv website
+#  @param start_num The number of the initial result
+#  @param max_num The maximum number of shown results
 def simple_search(words, arxiv_search_link, start_num, max_num):
 
 	# Initialising constant values for the search

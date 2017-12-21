@@ -10,52 +10,89 @@ import emoji_detect as emjd
 from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, NoCategoryError
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Class ArxivBot inherits from the telepot.Bot class (https://github.com/nickoala/telepot).
-# The class is used to deal with the messages received by the bot on Telegram,
-# and to perform simple searches on the arXiv website.
+## @package Library.arxiv_bot
+#  A Telegram Bot for searching the arXiv and get RSS feeds.
+#
+#  In this library we define a class which receives queries from Telegram users
+#  and makes searches on the arXiv.
 
+## This class implements the ArXivBot.
+#
+#  This class inherits from the telepot.Bot class (https://github.com/nickoala/telepot).
+#  The class is used to deal with the messages received by the bot on Telegram,
+#  and to perform simple searches on the arXiv website.
 class ArxivBot(telepot.Bot):
 
-	# Class constructor
-
+	## Class constructor
 	def __init__(self, *args, **kwargs):
 
 		super(ArxivBot, self).__init__(*args, **kwargs)
+
+		## The API link for the arXiv
 		self.arxiv_search_link = 'http://export.arxiv.org/api/query?search_query='
+
+		## The RSS link for the arXiv
 		self.arxiv_rss_link = 'http://arxiv.org/rss/'
+
+		## The maximum number of results shown from an RSS feed
 		self.max_rss_result_number = 50
+
+		## The maximum number of results shown from a search using API
 		self.max_api_result_number = 10
+
+		## The maximum number of keywords used in a search
 		self.max_number_keywords = 10
+
+		## The maximum number of authors shown for each paper
 		self.max_number_authors = 5
+
+		## The maximum number of characters in a single Telegram message
 		self.max_characters_chat = 4096
+
+		## The number of seconds to wait after using the API (set by arXiv)
 		self.arxiv_fair_time = 3
 
-	# The method allows for the injection of the name of the files for the error, feedback, and chat logs
-
+	## This method allows for the injection of the name of the files for the error, feedback, and chat logs.
+	#
+	#  @param self The object pointer
+	#  @param errors_file_name The string with the path to the error logfile
+	#  @param message_file_name The string with the path to the chat logfile
+	#  @param feedback_file_name The string with the path to the feedback logfile
 	def set_log_files(self, errors_file_name, message_file_name, feedback_file_name):
 
+		## The path to the error logfile
 		self.errors_log_file = errors_file_name
+
+		## The path to the chat logfile
 		self.message_log_file = message_file_name
+
+		## The path to the feedback logfile
 		self.feedback_log_file = feedback_file_name
 
-	# The method allows for the injection of the email address for the feedbacks
-
+	## This method allows for the injection of the email address for the feedbacks
+	#
+	#  @param self The object pointer
+	#  @param email_address The string with the email address
 	def set_email_feedback(self, email_address):
 
+		## The email address for the feedbacks
 		self.feedback_address = email_address
 
-	# The method allows for the injection of the name of the files for storing the users' preferences
-
+	## This method allows for the injection of the name of the files for storing the users' preferences
+	#
+	#  @param self The object pointer
+	#  @param preference_file_name The string with the path to the preferences database
 	def set_preference_database(self, preference_file_name):
 
+		## The path to the preference database
 		self.preference_file = preference_file_name
 
-	# The handle method receives the message sent by the user and processes it depending
-	# on the different "flavour" associated to it.
+	## This method receives the message sent by the user and processes it depending on the different "flavour" associated to it.
 	#
-	# NOTICE: Most of the "flavours" are not implemented yet.
-	# 		  Some might be implemented in the future.
-
+	#  **NOTE**: Most of the "flavours" are not implemented yet. Some might be implemented in the future.
+	#
+	#  @param self The object pointer
+	#  @param msg The message received from the user
 	def handle(self, msg):
 
 		msg_flavor = telepot.flavor(msg)
@@ -71,21 +108,24 @@ class ArxivBot(telepot.Bot):
 		else:
 			raise telepot.BadFlavor(msg)
 
-	# The handle_chat_message method is called by the handle method when the "flavour" of the
-	# message is 'chat'. The user is allowed to send four different commands:
+	## This method is called by the @ref handle method when the "flavour" of the message is 'chat'.
 	#
-	# - /search = perform a simple search in the arXiv
-	# - /today = search the papers of the day in a given category of the arXiv
-	# - /set = set the category where to search for the new submission
-	# - /feedback = the user can use the command to send a feedback
-	# - /help = send an help message to the user
+	#  The user is allowed to send four different commands:
 	#
-	# If another command is sent, the method suggest the user to use the /help.
-	# If the /search command is used, the do_easy_search_chat method is called.
-	# If the /today command is used, the do_today_search is called.
+	#  - `/search` : perform a simple search in the arXiv
+	#  - `/today` : search the papers of the day in a given category of the arXiv
+	#  - `/set` : set the category where to search for the new submission
+	#  - `/feedback` : the user can use the command to send a feedback
+	#  - `/help` : send an help message to the user
 	#
-	# After the search is done, the results are sent to the user and the task is finished.
-
+	#  If another command is sent, the method suggest the user to use the `/help`.
+	#  If the `/search` command is used, the @ref do_easy_search_chat method is called.
+	#  If the `/today` command is used, the @ref do_today_search method is called.
+	#
+	#  After the search is done, the results are sent to the user and the task is finished.
+	#
+	#  @param self The object pointer
+	#  @param msg The message received from the user
 	def handle_chat_message(self, msg):
 
 		content_type, chat_type, chat_id = telepot.glance(msg, 'chat')
@@ -124,15 +164,17 @@ class ArxivBot(telepot.Bot):
 		else:
 			self.sendMessage(chat_id, u'See the /help for information on this Bot!')
 
-	# The handle_callback_query method is called by the handle method when the
-	# "flavour" of the message is 'callback_query'. The message is a of this flavour
-	# when the user uses the inline keyboard to search for new results of their
-	# search.
+	## This method is called by the @ref handle method when the "flavour" of the message is 'callback_query'.
 	#
-	# NOTE: at the moment, this bot will receive callback queries only when the
-	#       user is looking at the results of a simple search, and want to move
-	#       to other results (the previous or the next ones)
-
+	#  The message has a 'callback_query' flavour when the user uses the inline
+	#  keyboard to search for new results of their search.
+	#
+	#  **NOTE**: at the moment, this bot will receive callback queries only when the
+	#  user is looking at the results of a simple search, and want to move
+	#  to other results (the previous or the next ones)
+	#
+	#  @param self The object pointer
+	#  @param msg The message received from the user
 	def handle_callback_query(self, msg):
 
 		query_id, chat_id, query_data = telepot.glance(msg, 'callback_query')
@@ -169,18 +211,17 @@ class ArxivBot(telepot.Bot):
 			self.sendMessage(chat_id, u'An unknown error occurred. \U0001F631')
 			self.save_unknown_error_log(chat_id, 'arxiv_bot.handle_callback_query')
 
-	# The do_easy_search_chat method is used when the user calls the /search command.
-	# The methods takes as input
+	## This method is used when the user calls the `/search` command.
 	#
-	# - The argument of the search, a list of Unicode strings (text) which define the search
-	# - The identity of the chat, so as to be able to answer the call
+	#  This method composes the arXiv link to which the requests is sent, makes a requests to
+	#  the website, parses the results, and sends them to the user.
 	#
-	# The method composes the arXiv link to which the requests is sent, makes a requests to
-	# the website, parses the results, and sends them to the user.
+	#  **NOTE**: No more than 10 results are shown due to the limitations on the screen of mobile phones.
+	#  The user can nevertheless view more results using the next button.
 	#
-	# NOTICE : No more than 10 results are shown due to the limitations on the screen of mobile phones.
-	# 		   The user is nevertheless advised to refine the search if more than 10 results are obtained.
-
+	#  @param self The object pointer
+	#  @param argument A list of Unicode strings which define the search
+	#  @param chat_identity The identity number associated to the chat
 	def do_easy_search_chat(self, argument, chat_identity):
 
 		if len(argument) > self.max_number_keywords:
@@ -197,7 +238,7 @@ class ArxivBot(telepot.Bot):
 			return None
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-			self.save_unknown_error_log(chat_identity, 'arxiv_lib.single_search')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.simple_search')
 			return None
 
 		try:
@@ -210,23 +251,22 @@ class ArxivBot(telepot.Bot):
 		if total_results <= self.max_api_result_number:
 			self.send_message_safely( chat_identity, message_result )
 		else:
-			keyboard = search_prev_next_keyboard( initial_result_number, total_results, self.max_api_result_number )
+			keyboard = self.search_prev_next_keyboard( initial_result_number, total_results, self.max_api_result_number )
 			self.send_message_safely( chat_identity, message_result, markup = keyboard )
 
 		time.sleep( self.arxiv_fair_time )
 
-	# The do_easy_search_query method is used when the user calls the /search command.
-	# The methods takes as input
+	## This method is used when the user clicks the next/previous buttons.
 	#
-	# - The argument of the search, a list of Unicode strings (text) which define the search
-	# - The number of the first result shown
-	# - The identity of the chat, so as to be able to answer the call
-	# - The query identity, so we can answer it
-	# - The message identity, so we can edit the message
+	#  The method composes the arXiv link to which the requests is sent, makes a requests to
+	#  the website, parses the results, and edit the previous message.
 	#
-	# The method composes the arXiv link to which the requests is sent, makes a requests to
-	# the website, parses the results, and edit the previous message.
-
+	#  @param self The object pointer
+	#  @param argument A list of Unicode strings which define the search
+	#  @param start_number An integer specifying the number of the first shown result
+	#  @param chat_identity The identity number associated to the chat
+	#  @param query_identity The identity number associated to the query
+	#  @param msg_identity The identity number associated to the message, so we can edit the message
 	def do_easy_search_query(self, argument, start_number, chat_identity, query_identity, msg_identity):
 
 		try:
@@ -236,7 +276,7 @@ class ArxivBot(telepot.Bot):
 			return None
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-			self.save_unknown_error_log(chat_identity, 'arxiv_lib.single_search')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.simple_search')
 			return None
 
 		try:
@@ -246,23 +286,23 @@ class ArxivBot(telepot.Bot):
 
 		message_result = self.prepare_message_api( argument, start_number, search_list, total_results)
 
-		keyboard = search_prev_next_keyboard( start_number, total_results, self.max_api_result_number )
+		keyboard = self.search_prev_next_keyboard( start_number, total_results, self.max_api_result_number )
 		self.edit_message_safely(message_result, query_identity, msg_identity, keyboard)
 
 		time.sleep( self.arxiv_fair_time )
 
-	# The set_category method is used when the user calls the /set command.
-	# It save the favourite category of the user, so that in the future the
-	# user can use the /today command without specifying the category
-	# The methods takes as input
+	## This method is used when the user calls the `/set` command.
 	#
-	# - The arXiv category we are interested in (ONLY one category)
-	# - The identity of the chat associated with the preference
+	#  This method saves the favourite category of the user, so that in the future the
+	#  user can use the `/today` command without specifying the category
 	#
-	# The method saves the preferred category in a file, together with the
-	# chat_id of the user. If another category was previously saved, the
-	# method overrides it with the new one.
-
+	#  The method saves the preferred category in a file, together with the
+	#  chat_id of the user. If another category was previously saved, the
+	#  method overrides it with the new one.
+	#
+	#  @param self The object pointer
+	#  @param arxiv_category The arXiv category we are interested in (ONLY one category)
+	#  @param chat_identity The identity number associated to the chat
 	def set_category(self, arxiv_category, chat_identity):
 
 		if not al.category_exists( arxiv_category ):
@@ -276,13 +316,13 @@ class ArxivBot(telepot.Bot):
 			self.add_preference( chat_identity, arxiv_category )
 			self.send_message_safely(chat_identity, u'Your preferred category has been recorded!\nNow use /today to get the daily submissions to this category.')
 
-	# The do_today_search_with_set_preference method is used to perform
-	# a do_today_search using a pre-defined category that the user has
-	# selected using the set_catgory method.
+	## This method looks at the RSS feed of a category set by the user.
 	#
-	# If the category is not set, the Bot will notify the user about the
-	# usage of the /today command.
-
+	#  If the category is not set, the Bot will notify the user about the
+	#  usage of the `/today` command.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
 	def do_today_search_with_set_preference(self, chat_identity):
 
 		if self.preference_exists( chat_identity ):
@@ -301,19 +341,19 @@ class ArxivBot(telepot.Bot):
 					  )
 			self.send_message_safely( chat_identity, message )
 
-	# The do_today_search method is used when the user calls the /today command.
-	# It search for the papers of the day in a given category of the arXiv.
-	# The methods takes as input
+	## This method is used when the user calls the `/today` command.
 	#
-	# - The arXiv category we are interested in (ONLY one category for limiting the number of results)
-	# - The identity of the chat, so as to be able to answer the call
+	#  The method searches for the papers of the day in a given category of the arXiv.
 	#
-	# The method composes the arXiv link to which the requests is sent, makes a requests to
-	# the website, parses the results, and sends them to the user.
+	#  The method composes the arXiv link to which the requests is sent, makes a requests to
+	#  the website, parses the results, and sends them to the user.
 	#
-	# NOTICE : Only for this kind of search, we allow for a maximum of 50 results.
-	# 		   If more results are presents, the user is notified.
-
+	#  **NOTE** : Only for this kind of search, we allow for a maximum of 50 results.
+	#  If more results are presents, the user is notified.
+	#
+	#  @param self The object pointer
+	#  @param arxiv_category The arXiv category we are interested in (ONLY one category for limiting the number of results)
+	#  @param chat_identity The identity number associated to the chat
 	def do_today_search(self, arxiv_category, chat_identity):
 
 		try:
@@ -337,8 +377,11 @@ class ArxivBot(telepot.Bot):
 
 		self.send_results_back_rss(chat_identity, search_list, remaining_results)
 
-	# This method return the email address where the user can submit a feedback
-
+	## This method returns the email address where the user can submit a feedback, or saves the feedback received.
+	#
+	#  @param self The object pointer
+	#  @param argument The string with the feedback
+	#  @param chat_identity The identity number associated to the chat
 	def give_feedback(self, argument, chat_identity):
 
 		if len(argument) == 0:
@@ -354,8 +397,10 @@ class ArxivBot(telepot.Bot):
 
 		self.send_message_safely( chat_identity, feedback_response )
 
-	# The method get_help provide some useful information about the Bot to the user
-
+	## This method provides some useful information about the Bot to the user.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
 	def get_help(self, chat_identity ):
 
 		random_category = random.randint( 0, al.number_categories() - 1 )
@@ -372,7 +417,7 @@ class ArxivBot(telepot.Bot):
 			return None
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-			self.save_unknown_error_log(chat_identity, 'arxiv_lib.specify_number_of_results')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.single_category')
 			return None
 
 		message = (u"Search for papers on the arXiv with this bot. "
@@ -392,15 +437,12 @@ class ArxivBot(telepot.Bot):
 
 		self.send_message_safely( chat_identity, message )
 
-	# The search_and_format method is used in the other search methods to
-	# send the request to the arXiv, parse the result, and format it accordingly.
+	## This method is used in the other search methods to send the request to the arXiv, parse the result, and format it accordingly.
 	# 
-	# The methods takes as input
-	#
-	# - The arXiv link for the request
-	# - The identity of the chat, so as to be able to answer the call
-	# - The type of feed the method has to process (can be either API or RSS). Feed API is default.
-
+	#  @param self The object pointer
+	#  @param search_link The arXiv link for the request
+	#  @param chat_identity The identity number associated to the chat
+	#  @param feed_type The type of feed the method has to process (can be either API or RSS). API is default
 	def search_and_format(self, search_link, chat_identity, feed_type = 'API'):
 
 		try:
@@ -471,19 +513,15 @@ class ArxivBot(telepot.Bot):
 
 		return search_list, total_results
 
-	# The method prepare_message_api formats the results of the search and prepares the message
-	# to be sent to the user. It returns the message.
+	## This method formats the results of the search and prepares the message to be sent to the user.
 	#
-	# The arguments of this method are:
+	#  **NOTE**: Since only 10 results can be shown, we do not have to worry about exceeding the size limit for the message.
 	#
-	# - argument : the keywords used in the search
-	# - start_num : the number of the first result shown
-	# - search_list : the unformatted list with all details about the results (prepared with the search_and_format method)
-	# - total_results : the total number of results associated with the search
-	#
-	# NOTICE: Since only 10 results can be shown, we do not have to worry about exceeding the size
-	#         limit for the message.
-
+	#  @param self The object pointer
+	#  @param argument The keywords used in the search
+	#  @param start_num The number of the first result shown
+	#  @param search_list The unformatted list with all details about the results (prepared with the @ref search_and_format method)
+	#  @param total_results The total number of results associated with the search
 	def prepare_message_api(self, argument, start_num, search_list, total_results):
 
 		result_counter = start_num + 1
@@ -502,11 +540,15 @@ class ArxivBot(telepot.Bot):
 
 		return message_result
 
-	# The method send_results_back_rss formats the result of the today RSS feed and send it to the user.
+	## This method formats the result of the today RSS feed and send it to the user.
 	#
-	# NOTICE: Telegram does not allow for sending messages bigger than 4096 characters,
-	#         so the method cut the message into chucks if the total number of characters is bigger. 
-
+	#  **NOTE**: Telegram does not allow for sending messages bigger than 4096 characters,
+	#  so the method cut the message into chucks if the total number of characters is bigger. 
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
+	#  @param search_list The unformatted list with all details about the results (prepared with the @ref search_and_format method)
+	#  @param remaining_results The remaining results which have not been shown
 	def send_results_back_rss(self, chat_identity, search_list, remaining_results):
 
 		result_counter = 1
@@ -531,8 +573,14 @@ class ArxivBot(telepot.Bot):
 
 		self.send_message_safely( chat_identity, message_result )
 
-	# The method checks the length of the message, and divides it if the maximum number of characters is exceeded.
-
+	## This method checks the length of the message, and divides it if the maximum number of characters is exceeded.
+	#
+	#  The method is used in the @ref send_results_back_rss method.
+	#
+	#  @param self The object pointer
+	#  @param message The message to check and possibly send
+	#  @param new_item The new result to add to the message
+	#  @param chat_identity The identity number associated to the chat
 	def check_size_and_split_message(self, message, new_item, chat_identity):
 
 		message_would_exceed = len(message) + len(new_item) >= self.max_characters_chat
@@ -544,21 +592,22 @@ class ArxivBot(telepot.Bot):
 				raise
 			except:
 				self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-				self.save_unknown_error_log(chat_identity, 'arxiv_bot.send_message_safely')
+				self.save_unknown_error_log(chat_identity, 'arxiv_bot.check_size_and_split_message')
 				raise
 			message = ''
 		message += new_item
 
 		return message
 
-	# Send the message safely, with the possibility of adding an inline keyboard.
-	# This method takes as arguments:
+	## This method sends the message safely.
 	#
-	# message : the message itself
-	# chat_identity : it can be chat_identity if we send, or msg_identifier if we edit
-	# markup : optional, default is None
-	# language : optional, default is HTML
-
+	#  The method provides the possibility of adding an inline keyboard at the bottom of the message.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
+	#  @param message The message to send
+	#  @param markup The keyboard (optional, default is None)
+	#  @param language The language in which the message is parsed (default is HTML)
 	def send_message_safely(self, chat_identity, message, markup = None, language = 'HTML'):
 
 		try:
@@ -572,14 +621,13 @@ class ArxivBot(telepot.Bot):
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
 			self.save_unknown_error_log(chat_identity, 'arxiv_bot.send_message_safely')
 
-	# Edit the message safely, with the possibility of adding an inline keyboard.
-	# This method takes as arguments:
+	## This method edits the message safely, with the possibility of adding an inline keyboard.
 	#
-	# message : the message itself
-	# query_identity : identifier for the query (needed to answer query and for exceptions handling)
-	# msg_identifier : identifier for the message to be edited
-	# keyboard : optional
-
+	#  @param self The object pointer
+	#  @param message The message to send
+	#  @param query_identity The identifier for the query (needed to answer query and for exceptions handling)
+	#  @param msg_identifier The identifier for the message to be edited
+	#  @param keyboard The keyboard (optional, default is None)
 	def edit_message_safely(self, message, query_identity, msg_identifier, keyboard = None):
 
 		try:
@@ -598,19 +646,51 @@ class ArxivBot(telepot.Bot):
 
 		self.answer_robust_callback_query(query_identity)
 
-	# This method avoid the occurrence of errors when the ArXivBot cannot answer
-	# a callback call to the user.
-
+	## This method avoids the occurrence of errors when the ArXivBot cannot answer a callback call to the user.
+	#
+	#  @param self The object pointer
+	#  @param query_identity The identifier for the query (needed to answer query and for exceptions handling)
+	#  @param message The message to send (optional, default is None)
 	def answer_robust_callback_query(self, query_identity, message = None):
 
 		try:
 			self.answerCallbackQuery(query_identity, text=message)
 		except:
-			self.save_unknown_error_log(query_identity, 'arxiv_bot.edit_message_safely')
+			self.save_unknown_error_log(query_identity, 'arxiv_bot.answer_robust_callback_query')
 
-	# Search in the preference database for the chat_id of the user.
-	# If it is found, return True, otherwise return False
+	## This method prepares a keyboard for getting the previous/next results of a search.
+	#
+	#  @param self The object pointer
+	#  @param start_results_from The number of the first result shown
+	#  @param total_results The number of total results to show
+	#  @param number_results_shown The number of results shown so far
+	def search_prev_next_keyboard(self, start_results_from, total_results, number_results_shown):
 
+		new_start_prev = str(start_results_from - number_results_shown)
+		new_start_next = str(start_results_from + number_results_shown)
+
+		close_button = InlineKeyboardButton(text = 'Close', callback_data = 'search close None')
+		prev_button = InlineKeyboardButton(text = 'Prev', callback_data = 'search previous ' + new_start_prev )
+		next_button = InlineKeyboardButton(text = 'Next', callback_data = 'search next ' + new_start_next )
+
+		results_to_be_shown = total_results - ( start_results_from + number_results_shown )
+
+		if start_results_from == 0:
+			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, next_button]])
+		else:
+			if results_to_be_shown > 0:
+				keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button, next_button]])
+			else:
+				keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button]])
+
+		return keyboard
+
+	## This method searches in the preference database for the chat_identity of the user.
+	#
+	#  If the chat_identity is found, return True, otherwise return False.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
 	def preference_exists(self, chat_identity):
 
 		preference_bool = False
@@ -623,9 +703,11 @@ class ArxivBot(telepot.Bot):
 
 		return preference_bool
 
-	# Replace the old preferred category associated with the chat_id
-	# with the new category provided
-
+	## This method replaces the old preferred category associated with the chat_identity with the new category provided
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
+	#  @param category A category of the arXiv
 	def overwrite_preference(self, chat_identity, category):
 
 		temporary_file, absolute_path_file = tempfile.mkstemp()
@@ -640,9 +722,11 @@ class ArxivBot(telepot.Bot):
 		os.remove(self.preference_file)
 		shutil.move(absolute_path_file, self.preference_file)
 
-	# Add the preference to the database, in a single line with the following structure
-	# chat_id category
-
+	## This method adds the preference to the database.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
+	#  @param category A category of the arXiv
 	def add_preference(self, chat_identity, category):
 
 		preference_string = str(chat_identity) + ' ' + str(category) + '\n'
@@ -650,8 +734,10 @@ class ArxivBot(telepot.Bot):
 		with open(self.preference_file, 'a') as database:
 			database.write(preference_string)
 
-	# Search into the preference database for the category associated with the chat_id provided
-
+	## This method searches into the preference database for the category associated with the chat_identity provided.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
 	def search_for_category(self, chat_identity):
 
 		category = None
@@ -664,10 +750,14 @@ class ArxivBot(telepot.Bot):
 
 		return category
 
-	# Check if a pattern is present in a string.
-	# This should probably not be a method of the class, as it is pretty general.
-	# Might think of putting in an additional library.
-
+	## This method checks if a pattern is present in a string.
+	#
+	#  The method should probably not belong to the class, as it is pretty general.
+	#  I might think of putting in an additional library.
+	#
+	#  @param self The object pointer
+	#  @param string A string of text
+	#  @param pattern A pattern to be found in the string
 	def pattern_is_present(self, string, pattern):
 
 		index = string.find(pattern)
@@ -676,11 +766,12 @@ class ArxivBot(telepot.Bot):
 			return True
 		return False
 
-	# The find_current_keywords method is used to search for the keywords
-	# present in a message text showing the results of a given search.
-	# The content of the message, together with the left and right delimiters
-	# around the keywords, are passed to the method. 
-
+	## This method searches for the keywords present in a message which shows the results of a given search.
+	#
+	#  @param self The object pointer
+	#  @param message_content The text message
+	#  @param left_key A pattern to be found at the left of the required information
+	#  @param right_key A pattern to be found at the right of the required information
 	def find_current_keywords(self, message_content, left_key, right_key):
 
 		keywords_start = message_content.index( left_key ) + len( left_key )
@@ -691,8 +782,11 @@ class ArxivBot(telepot.Bot):
 
 		return keywords
 
-	# Saves the feedback message in a log file.
-
+	## This method saves the feedback message in a log file.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
+	#  @param argument String with the feedback to be saved
 	def save_feedback(self, chat_identity, argument):
 
 		message_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
@@ -700,11 +794,13 @@ class ArxivBot(telepot.Bot):
 		with open(self.feedback_log_file, 'a') as fblog:
 			fblog.write(message_string)
 
-
-	# Saves the details of the message (who, what) in a log file for statistical purposes.
+	## This method saves the details of the message (who, what) in a log file for statistical purposes.
 	#
-	# NOTICE: The chat identity is saved, but not other information such as the real name of the user.
-
+	#  **NOTE**: The chat identity is saved, but not other information such as the real name of the user.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
+	#  @param content_type The type of content sent by the user (text, picture, etc.)
 	def save_message_details_log(self, chat_identity, content_type):
 
 		message_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
@@ -712,16 +808,21 @@ class ArxivBot(telepot.Bot):
 		with open(self.message_log_file, 'a') as msglog:
 			msglog.write(message_string)
 
-	# Saves the content of the message in a log file for statistical purposes.
-
-	def save_message_content_log( self, text_message ):
+	## This method saves the content of the message in a log file for statistical purposes.
+	#
+	#  @param self The object pointer
+	#  @param text_message The message sent by the user
+	def save_message_content_log(self, text_message):
 
 		message_string = text_message+u'\n'
 		with open(self.message_log_file, 'a') as msglog:
 			msglog.write(message_string.encode('utf8'))
 
-	# Saves the unknown errors in a log file for bug-fixing purposes.
-
+	## This method saves the unknown errors in a log file for bug-fixing purposes.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
+	#  @param in_function A string with information about where the error verified
 	def save_unknown_error_log(self, chat_identity, in_function):
 
 		error_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
@@ -729,8 +830,11 @@ class ArxivBot(telepot.Bot):
 		with open(self.errors_log_file, 'a') as errlog:
 			errlog.write(error_string)
 
-	# Saves the known errors in a log file for bug-fixing purposes.
-
+	## This method saves the known errors in a log file for bug-fixing purposes.
+	#
+	#  @param self The object pointer
+	#  @param chat_identity The identity number associated to the chat
+	#  @param raised_exception A string with information about the error verified
 	def save_known_error_log(self, chat_identity, raised_exception):
 
 		error_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
@@ -748,33 +852,7 @@ class ArxivBot(telepot.Bot):
 
 		result_id, from_id, message_query = telepot.glance(msg, 'chosen_inline_result')
 		
-	# Advanced search (the method can be implemented but does not seem to fit into the design of the Bot).
-
+	## The method can be implemented but does not seem to fit into the design of the ArXivBot.
 	def do_advanced_search(self):
 		
 		return None
-
-# ------------------------------------------------ INLINE KEYBOARD ------------------------------------------------
-
-# Keyboard for getting the previous/next results of a search
-
-def search_prev_next_keyboard(start_results_from, total_results, number_results_shown):
-
-	new_start_prev = str(start_results_from - number_results_shown)
-	new_start_next = str(start_results_from + number_results_shown)
-
-	close_button = InlineKeyboardButton(text = 'Close', callback_data = 'search close None')
-	prev_button = InlineKeyboardButton(text = 'Prev', callback_data = 'search previous ' + new_start_prev )
-	next_button = InlineKeyboardButton(text = 'Next', callback_data = 'search next ' + new_start_next )
-
-	results_to_be_shown = total_results - ( start_results_from + number_results_shown )
-
-	if start_results_from == 0:
-		keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, next_button]])
-	else:
-		if results_to_be_shown > 0:
-			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button, next_button]])
-		else:
-			keyboard = InlineKeyboardMarkup(inline_keyboard = [[close_button, prev_button]])
-
-	return keyboard

@@ -1,8 +1,11 @@
 from emoji import UNICODE_EMOJI
 
-# The function detect_emoji search the string text_msg and return True if
-# the string contains an emoji, False otherwise.
+## @package Library.emoji_detect
+#  Micro-library containing functions to filter emoji 
 
+## This function searches a string searching for emoji
+#
+#  @param text_msg String with some text
 def detect_emoji(text_msg):
 
     for emoji in UNICODE_EMOJI:
