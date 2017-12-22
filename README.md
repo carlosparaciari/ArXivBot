@@ -15,6 +15,9 @@ However, if you want a private Bot for searching on the arXiv, you can fork and 
 Every contribution to this project is more than welcome! If you find that the ArXivBot might be improved, by either adding new features or modifying existing ones, please modify the code of your local repository and commit it. Then, create a pull request to this project, and we will review your request.
 
 ## ArXiv library
+
+[![Build Status](https://travis-ci.org/carlosparaciari/ArXivBot.svg?branch=master)](https://travis-ci.org/carlosparaciari/ArXivBot)
+
 This project include a small library to communicate with the arXiv and parse the results, which can be re-used for other projects. As for the Bot itself, please feel free to improve the library, by either re-factoring it, or introducing other features. The library utilises the 3rd-party modules [Requests](http://docs.python-requests.org/en/master/), [feedparser](https://github.com/kurtmckee/feedparser), and [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/).
 
 ## Acknowledgement
