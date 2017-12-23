@@ -1,4 +1,5 @@
 from customised_exceptions import NoArgumentError, GetRequestError, UnknownError, NoCategoryError
+import datetime as dt
 import requests
 import feedparser
 import sys, os
@@ -291,6 +292,7 @@ def find_publishing_date(dictionary):
 
 	if isinstance(date, unicode) and len(date) > 10:
 		date = date[0:10]
+		date = dt.datetime.strptime(date, '%Y-%m-%d').strftime('%d %b %Y')
 		return date
 	else:
 		return None

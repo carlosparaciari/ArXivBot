@@ -380,7 +380,7 @@ def test_review_response_correct_api():
 
 	result_list = al.review_response(dictionary, 100, 'API')
 
-	expected_list = [{'title' : u'Nice Title', 'authors' : u'Carlo', 'date' : u'1992-05-12', 'link' : 'www.hi.com'}]
+	expected_list = [{'title' : u'Nice Title', 'authors' : u'Carlo', 'date' : u'12 May 1992', 'link' : 'www.hi.com'}]
 
 	assert_equal(result_list, expected_list, "The obtained response is different from the expected one")
 
@@ -421,7 +421,7 @@ def test_review_response_correct_from_link():
 
 	expected_list = {'link': u'http://arxiv.org/abs/1311.6008v2',
 					 'authors': u"Carlo Sparaciari, Stefano Olivares, Francesco Ticozzi, Matteo G. A. Paris",
-					 'date' : u'2013-11-23',
+					 'date' : u'23 Nov 2013',
 					 'title': u'Exact and approximate solutions for the quantum minimum-Kullback-entropy estimation problem'}
 
 	assert_equal(result_list[0], expected_list, "The obtained response is different from the expected one")
@@ -758,4 +758,4 @@ def test_find_publishing_date_correct():
 
 	element = al.find_publishing_date(dictionary)
 
-	assert_equal(element, u'2014-07-02', "The obtained response is different from the expected one")
+	assert_equal(element, u'02 Jul 2014', "The obtained response is different from the expected one")

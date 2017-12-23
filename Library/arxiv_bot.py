@@ -531,7 +531,7 @@ class ArxivBot(telepot.Bot):
 		message_result = 'Your search keywords are:\n'+keywords+'\n\n'
 		
 		for result in search_list:
-			new_item = '<b>'+str(result_counter)+'</b>. <em>'+result['title']+'</em>\n'+result['authors']+'\n'+result['date']+'\n'+result['link']+'\n\n'
+			new_item = '<b>'+str(result_counter)+'</b>. <em>'+result['title']+'</em>\n'+result['authors']+'\n<em>Submitted on'+result['date']+'</em>\n'+result['link']+'\n\n'
 			message_result += new_item
 			result_counter += 1
 		
