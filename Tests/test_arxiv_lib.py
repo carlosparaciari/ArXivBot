@@ -305,7 +305,7 @@ def test_review_response_wrong_number_type():
 		al.review_response(dictionary, max_number, 'API')
 
 # when the maximum number of authors of review response is not bigger or equal to 1, needs to return error
-def test_review_response_wrong_number_type():
+def test_review_response_wrong_number_value():
 
 	dictionary = {'a' : 1, 'entries' : [{ 'key1' : 1, 'key2' : 2}, { 'key3' : 3, 'key4' : 4}]}
 	max_numbers = [-1, 0]
@@ -372,7 +372,7 @@ def test_review_response_correct_api():
 				  				'title' : u'Nice Title',
 				  				'animal' : 'Dog',
 				  				'authors' : [{'name' : u'Carlo'}],
-				  				'date' : u'1992-05-12',
+				  				'published' : u'1992-05-12T15:44:29Z',
 				  				'link' : 'www.hi.com'},
 				  			   {'noise' : False,
 				  			   	'animal' : 'Frog'}
@@ -380,7 +380,7 @@ def test_review_response_correct_api():
 
 	result_list = al.review_response(dictionary, 100, 'API')
 
-	expected_list = [{'title' : u'Nice Title', 'authors' : u'Carlo', 'link' : 'www.hi.com'}]
+	expected_list = [{'title' : u'Nice Title', 'authors' : u'Carlo', 'date' : u'1992-05-12', 'link' : 'www.hi.com'}]
 
 	assert_equal(result_list, expected_list, "The obtained response is different from the expected one")
 
@@ -392,13 +392,13 @@ def test_review_response_correct_rss():
 				  				'title' : u'This is a\n new paper. (arXiv:0000.00000v1 [cat])',
 				  				'animal' : 'Dog',
 				  				'author' : u'<a href="http://webpage.com/Mario">Mario Rossi</a>, <a href="http://webpage.com/Giulio">Giulio Verdi</a>, <a href="http://webpage.com/Mauro">Mauro Bianchi</a>',
-				  				'date' : u'1992-05-12',
+				  				'published' : u'1992-05-12T15:44:29Z',
 				  				'link' : u'www.hi.com'},
 				  			   {'noise' : False,
 				  				'title' : u'This is an old paper. (arXiv:0000.00000v1 [cat] UPDATED)',
 				  				'animal' : 'Cat',
 				  				'author' : u'<a href="http://webpage.com/Mario">Mario Rossi</a>, <a href="http://webpage.com/Giulio">Giulio Verdi</a>, <a href="http://webpage.com/Mauro">Mauro Bianchi</a>',
-				  				'date' : u'1991-03-17',
+				  				'published' : u'1992-05-12T15:44:29Z',
 				  				'link' : u'www.hello.com'}
 				  			  ]}
 
@@ -421,6 +421,7 @@ def test_review_response_correct_from_link():
 
 	expected_list = {'link': u'http://arxiv.org/abs/1311.6008v2',
 					 'authors': u"Carlo Sparaciari, Stefano Olivares, Francesco Ticozzi, Matteo G. A. Paris",
+					 'date' : u'2013-11-23',
 					 'title': u'Exact and approximate solutions for the quantum minimum-Kullback-entropy estimation problem'}
 
 	assert_equal(result_list[0], expected_list, "The obtained response is different from the expected one")
@@ -437,7 +438,7 @@ def test_is_field_there_no():
 	assert_equal(element, None, "The obtained response is different from the expected one")
 	
 # when the filed is there, al.is_field_there should give a value
-def test_is_field_there_no():
+def test_is_field_there_yes():
 
 	dictionary = {'a' : 1 , 'b' : 'hi'}
 
@@ -723,38 +724,38 @@ def test_prepare_authors_field_API_cut_number():
 
 # ---------------------------------- FIND YEAR TESTS ----------------------------------
 
-# when the date field is not there, find_year should give None
-def test_find_year_no_entry():
+# when the date field is not there, find_publishing_date should give None
+def test_find_publishing_date_no_entry():
 
 	dictionary = {'a' : 1 , 'b' : 'hi'}
 
-	element = al.find_year(dictionary)
+	element = al.find_publishing_date(dictionary)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
 # when the date field is there, but it is not associated with a string
-def test_find_year_wrong_entry():
+def test_find_publishing_date_wrong_entry():
 
-	dictionary = {'a' : 1 , 'b' : 'hi', 'date' : 3}
+	dictionary = {'a' : 1 , 'b' : 'hi', 'published' : 3}
 
-	element = al.find_year(dictionary)
+	element = al.find_publishing_date(dictionary)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
 # when the date field is there, but it is not associated with a string
-def test_find_year_wrong_length():
+def test_find_publishing_date_wrong_length():
 
-	dictionary = {'a' : 1 , 'b' : 'hi', 'date' : u'123'}
+	dictionary = {'a' : 1 , 'b' : 'hi', 'published' : u'123'}
 
-	element = al.find_year(dictionary)
+	element = al.find_publishing_date(dictionary)
 
 	assert_equal(element, None, "The obtained response is different from the expected one")
 
 # when find year works fine
-def test_find_year_correct():
+def test_find_publishing_date_correct():
 
-	dictionary = {'a' : 1 , 'b' : 'hi', 'date' : u'1234567'}
+	dictionary = {'a' : 1 , 'b' : 'hi', 'published' : u'2014-07-02T07:41:45Z'}
 
-	element = al.find_year(dictionary)
+	element = al.find_publishing_date(dictionary)
 
-	assert_equal(element, u'1234', "The obtained response is different from the expected one")
+	assert_equal(element, u'2014-07-02', "The obtained response is different from the expected one")

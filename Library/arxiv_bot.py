@@ -515,6 +515,7 @@ class ArxivBot(telepot.Bot):
 
 	## This method formats the results of the search and prepares the message to be sent to the user.
 	#
+	#  The method prepares a message where all entries have a title, author's list, date (when the paper was published), and link.
 	#  **NOTE**: Since only 10 results can be shown, we do not have to worry about exceeding the size limit for the message.
 	#
 	#  @param self The object pointer
@@ -530,7 +531,7 @@ class ArxivBot(telepot.Bot):
 		message_result = 'Your search keywords are:\n'+keywords+'\n\n'
 		
 		for result in search_list:
-			new_item = '<b>'+str(result_counter)+'</b>. <em>'+result['title']+'</em>\n'+result['authors']+'\n'+result['link']+'\n\n'
+			new_item = '<b>'+str(result_counter)+'</b>. <em>'+result['title']+'</em>\n'+result['authors']+'\n'+result['date']+'\n'+result['link']+'\n\n'
 			message_result += new_item
 			result_counter += 1
 		

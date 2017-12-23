@@ -84,7 +84,8 @@ def review_response(dictionary, max_number_authors, feed_type):
 
 		if feed_type == 'API':
 			element = {'title' : prepare_title_field_API(entry),
-				   	   'authors' : prepare_authors_field_API(entry, max_number_authors)}
+				   	   'authors' : prepare_authors_field_API(entry, max_number_authors),
+				   	   'date' : find_publishing_date(entry)}
 		elif feed_type == 'RSS':
 			if is_update( entry ) == True:
 				continue
@@ -281,15 +282,15 @@ def is_field_there(dictionary, key):
 	except:
 		return None
 
-## This function finds the year of a given entry, and is needed for the @ref review_response function.
+## This function finds the publishing date of a given entry, and is needed for the @ref review_response function.
 #
 #  @param dictionary This is the output of the function @ref parse_response
-def find_year(dictionary):
+def find_publishing_date(dictionary):
 
-	date = is_field_there(dictionary, 'date')
+	date = is_field_there(dictionary, 'published')
 
-	if isinstance(date, unicode) and len(date) > 3:
-		date = date[0:4]
+	if isinstance(date, unicode) and len(date) > 10:
+		date = date[0:10]
 		return date
 	else:
 		return None
