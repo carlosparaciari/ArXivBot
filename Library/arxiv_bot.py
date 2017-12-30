@@ -1,7 +1,7 @@
 import telepot
 import requests
+import datetime
 import time
-import os
 import random
 import psycopg2
 import arxiv_lib as al
@@ -56,8 +56,8 @@ class ArxivBot(telepot.Bot):
 	#  @param self The object pointer
 	#  @param errors_file_name The string with the path to the error logfile
 	#  @param message_file_name The string with the path to the chat logfile
-	#  @param feedback_file_name The string with the path to the feedback logfile
-	def set_log_files(self, errors_file_name, message_file_name, feedback_file_name):
+	#  @param fdbk_tbl The string with the name of the feedback table
+	def set_log_files(self, errors_file_name, message_file_name, fdbk_tbl):
 
 		## The path to the error logfile
 		self.errors_log_file = errors_file_name
@@ -65,8 +65,8 @@ class ArxivBot(telepot.Bot):
 		## The path to the chat logfile
 		self.message_log_file = message_file_name
 
-		## The path to the feedback logfile
-		self.feedback_log_file = feedback_file_name
+		## The name of the feedback table
+		self.feedback_table = fdbk_tbl
 
 	## This method allows for the injection of the email address for the feedbacks
 	#
@@ -76,15 +76,6 @@ class ArxivBot(telepot.Bot):
 
 		## The email address for the feedbacks
 		self.feedback_address = email_address
-
-	## This method allows for the injection of the name of the files for storing the users' preferences
-	#
-	#  @param self The object pointer
-	#  @param preference_file_name The string with the path to the preferences database
-	def set_preference_database(self, preference_file_name):
-
-		## The path to the preference database
-		self.preference_file = preference_file_name
 
 	## This method allows for the injection of the name of the table where the users' preferences are stored
 	#
@@ -418,7 +409,10 @@ class ArxivBot(telepot.Bot):
 		else:
 			separator = ' '
 			message = separator.join(argument)
-			self.save_feedback(chat_identity, message)
+			try:
+				self.save_feedback(chat_identity, message)
+			except:
+				return None
 			feedback_response = u'Thanks for your feedback! \U0001F604'
 
 		self.send_message_safely( chat_identity, feedback_response )
@@ -762,7 +756,7 @@ class ArxivBot(telepot.Bot):
 
 		try:
 			sql_command = "INSERT INTO " + self.preference_table + " (user_identity, category) VALUES (%s, %s);"
-			self.cursor_database.execute(sql_command , (chat_identity, category))
+			self.cursor_database.execute(sql_command, (chat_identity, category))
 			self.connection_database.commit()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
@@ -834,10 +828,20 @@ class ArxivBot(telepot.Bot):
 	#  @param argument String with the feedback to be saved
 	def save_feedback(self, chat_identity, argument):
 
-		message_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
-		message_string = message_time + ' - ' + str(chat_identity) + ' - ' + argument + '\n'
-		with open(self.feedback_log_file, 'a') as fblog:
-			fblog.write(message_string)
+		message_time = datetime.datetime.utcnow()
+
+		try:
+			sql_command = "INSERT INTO " + self.feedback_table + " (message_time, user_identity, comment) VALUES (%s, %s, %s);"
+			self.cursor_database.execute(sql_command , (message_time, chat_identity, argument))
+			self.connection_database.commit()
+		except psycopg2.Error as PGE:
+			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
+			self.save_known_error_log(chat_identity, PGE)
+			raise
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_bot.add_preference')
+			raise
 
 	## This method saves the details of the message (who, what) in a log file for statistical purposes.
 	#
