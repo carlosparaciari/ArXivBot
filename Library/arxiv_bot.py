@@ -2,6 +2,7 @@ import telepot
 import requests
 import datetime
 import time
+import sys
 import random
 import psycopg2
 import arxiv_lib as al
@@ -59,15 +60,14 @@ class ArxivBot(telepot.Bot):
 			self.connection_database = psycopg2.connect(dbname = database_name,
 														user = database_user,
 														password = database_password)
+			## The database cursor object
+			self.cursor_database = self.connection_database.cursor()
 		except:
 			error_time = datetime.datetime.utcnow()
 			error_time_string = error_time.strftime("%d %b %Y %H:%M:%S")
 			exception_type, exception_description, traceback = sys.exc_info()
 			message_on_stdout = 'Error occurred during connection to database.\n' + error_time_string + ' - ' + exception_type.__name__ + ' - ' + str(exception_description)
 			print message_on_stdout
-
-		## The database cursor object
-		self.cursor_database = self.connection_database.cursor()
 
 	## Class destructor
 	def __del__(self):

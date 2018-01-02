@@ -3,29 +3,27 @@
 
 import sys, os
 sys.path.append(os.path.abspath(os.path.join('..', 'Library')))
-
 import arxiv_bot as ab
 import yaml
-import time
-
-errors_log_file = os.path.join('LogFiles', 'errors.log')
-chat_log_file = os.path.join('LogFiles', 'chat_recorder.log')
-feedback_log_file = os.path.join('LogFiles', 'feedbacks.log')
-preference_database = os.path.join('preference.db')
+import datetime
 
 with open(os.path.join('Data','bot_details.yaml'), 'r') as file_input:
 	detail = yaml.load(file_input)
 
-bot = ab.ArxivBot(detail['token'])
-bot.set_log_files(errors_log_file, chat_log_file, feedback_log_file)
+# Set up the ArXivBot
+
+bot = ab.ArxivBot(detail['token'], detail['database_name'], detail['database_user'], detail['database_password'])
 bot.set_email_feedback(detail['email'])
-bot.set_preference_database(preference_database)
+
+# Start running the service
 
 try:
-	bot.message_loop(run_forever = True)
+	bot.message_loop(run_forever = True)  # <--- NOW DEPRECATED. See the manual for information on MessageLoop method
 except:
+	error_time = datetime.datetime.utcnow()
+	error_time_string = error_time.strftime("%d %b %Y %H:%M:%S")
 	exception_type, exception_description, traceback = sys.exc_info()
-	error_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
-	error_string = error_time + ' - MessageLoop exception (Telepot) - ' + exception_type.__name__ + ' - ' + str(exception_description) + '\n'
-	with open(errors_log_file, 'a') as errlog:
-			errlog.write(error_string)
+	message_on_stdout = 'Error occurred during message_loop.\n' + error_time_string + ' - ' + exception_type.__name__ + ' - ' + str(exception_description)
+	print message_on_stdout
+
+del bot
