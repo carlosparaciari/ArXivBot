@@ -57,16 +57,10 @@ class ArxivBot(telepot.Bot):
 	#  @param errors_file_name The string with the path to the error logfile
 	#  @param message_file_name The string with the path to the chat logfile
 	#  @param fdbk_tbl The string with the name of the feedback table
-	def set_log_files(self, errors_file_name, message_file_name, fdbk_tbl):
-
-		## The path to the error logfile
-		self.errors_log_file = errors_file_name
+	def set_log_files(self, message_file_name):
 
 		## The path to the chat logfile
 		self.message_log_file = message_file_name
-
-		## The name of the feedback table
-		self.feedback_table = fdbk_tbl
 
 	## This method allows for the injection of the email address for the feedbacks
 	#
@@ -76,15 +70,6 @@ class ArxivBot(telepot.Bot):
 
 		## The email address for the feedbacks
 		self.feedback_address = email_address
-
-	## This method allows for the injection of the name of the table where the users' preferences are stored
-	#
-	#  @param self The object pointer
-	#  @param pref_tbl The string with the name of the preference table
-	def set_preference_table(self, pref_tbl):
-
-		## The name of the preference table
-		self.preference_table = pref_tbl
 
 	## This method allows for the injection of the connection object needed to operate over the database
 	#
@@ -346,7 +331,7 @@ class ArxivBot(telepot.Bot):
 			preferred_category = self.search_for_category( chat_identity )
 			if preferred_category == None:
 				self.sendMessage(chat_identity, u'An unknown error occurred while checking your preferences. \U0001F631')
-				self.save_unknown_error_log(chat_identity, 'arxiv_lib.do_today_search_with_set_preference')
+				self.save_unknown_error_log(chat_identity, 'arxiv_bot.do_today_search_with_set_preference')
 				return None
 			self.do_today_search( preferred_category, chat_identity )
 		else:
@@ -510,7 +495,7 @@ class ArxivBot(telepot.Bot):
 			raise
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-			self.save_unknown_error_log(chat_identity, 'arxiv_lib.parse_response')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.review_response')
 			raise
 
 		total_results = None
@@ -715,7 +700,7 @@ class ArxivBot(telepot.Bot):
 	def preference_exists(self, chat_identity):
 
 		try:
-			sql_command = "SELECT exists (SELECT 1 FROM " + self.preference_table + " WHERE user_identity = %s LIMIT 1);"
+			sql_command = "SELECT exists (SELECT 1 FROM preferences WHERE user_identity = %s LIMIT 1);"
 			self.cursor_database.execute(sql_command, (chat_identity,))
 			preference_tuple = self.cursor_database.fetchone()
 		except psycopg2.Error as PGE:
@@ -737,7 +722,7 @@ class ArxivBot(telepot.Bot):
 	def overwrite_preference(self, chat_identity, category):
 
 		try:
-			sql_command = "UPDATE " + self.preference_table + " SET category = %s WHERE user_identity = %s;"
+			sql_command = "UPDATE preferences SET category = %s WHERE user_identity = %s;"
 			self.cursor_database.execute(sql_command, (category, chat_identity))
 			self.connection_database.commit()
 		except psycopg2.Error as PGE:
@@ -755,7 +740,7 @@ class ArxivBot(telepot.Bot):
 	def add_preference(self, chat_identity, category):
 
 		try:
-			sql_command = "INSERT INTO " + self.preference_table + " (user_identity, category) VALUES (%s, %s);"
+			sql_command = "INSERT INTO preferences (user_identity, category) VALUES (%s, %s);"
 			self.cursor_database.execute(sql_command, (chat_identity, category))
 			self.connection_database.commit()
 		except psycopg2.Error as PGE:
@@ -774,7 +759,7 @@ class ArxivBot(telepot.Bot):
 		category = None
 
 		try:
-			sql_command = "SELECT category FROM " + self.preference_table + " WHERE user_identity = %s;"
+			sql_command = "SELECT category FROM preferences WHERE user_identity = %s;"
 			self.cursor_database.execute(sql_command, (chat_identity,))
 			category_tuple = self.cursor_database.fetchone()
 		except psycopg2.Error as PGE:
@@ -831,7 +816,7 @@ class ArxivBot(telepot.Bot):
 		message_time = datetime.datetime.utcnow()
 
 		try:
-			sql_command = "INSERT INTO " + self.feedback_table + " (message_time, user_identity, comment) VALUES (%s, %s, %s);"
+			sql_command = "INSERT INTO feedbacks (message_time, user_identity, comment) VALUES (%s, %s, %s);"
 			self.cursor_database.execute(sql_command , (message_time, chat_identity, argument))
 			self.connection_database.commit()
 		except psycopg2.Error as PGE:
@@ -840,7 +825,7 @@ class ArxivBot(telepot.Bot):
 			raise
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-			self.save_unknown_error_log(chat_identity, 'arxiv_bot.add_preference')
+			self.save_unknown_error_log(chat_identity, 'arxiv_bot.save_feedback')
 			raise
 
 	## This method saves the details of the message (who, what) in a log file for statistical purposes.
@@ -867,29 +852,49 @@ class ArxivBot(telepot.Bot):
 		with open(self.message_log_file, 'a') as msglog:
 			msglog.write(message_string.encode('utf8'))
 
-	## This method saves the unknown errors in a log file for bug-fixing purposes.
+	## This method prepares the information about a unknown errors.
 	#
 	#  @param self The object pointer
 	#  @param chat_identity The identity number associated to the chat
 	#  @param in_function A string with information about where the error verified
 	def save_unknown_error_log(self, chat_identity, in_function):
 
-		error_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
-		error_string = error_time + ' - ' + str(chat_identity) + ' - ' + 'Unknown error occurred while running ' + in_function + ' function.' + '\n'
-		with open(self.errors_log_file, 'a') as errlog:
-			errlog.write(error_string)
+		error_time = datetime.datetime.utcnow()
+		error_type = 'unknown'
+		error_details = 'Error occurred in function ' + in_function
 
-	## This method saves the known errors in a log file for bug-fixing purposes.
+		self.save_error(error_time, chat_identity, error_type, error_details)
+
+	## This method prepares the information about a known errors.
 	#
 	#  @param self The object pointer
 	#  @param chat_identity The identity number associated to the chat
 	#  @param raised_exception A string with information about the error verified
 	def save_known_error_log(self, chat_identity, raised_exception):
 
-		error_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
-		error_string = error_time + ' - ' + str(chat_identity) + ' - ' + type(raised_exception).__name__ + ' - ' + raised_exception.args[0] + '\n'
-		with open(self.errors_log_file, 'a') as errlog:
-			errlog.write(error_string)
+		error_time = datetime.datetime.utcnow()
+		error_type = 'known'
+		error_details = type(raised_exception).__name__ + ' - ' + raised_exception.args[0]
+
+		self.save_error(error_time, chat_identity, error_type, error_details)
+
+	## This method saves the errors into the postgreSQL database 'errors' for bug-fixing purposes.
+	#
+	#  @param self The object pointer
+	#  @param error_time The datetime object with the current date (GMT)
+	#  @param chat_identity The identity number associated to the chat
+	#  @param error_type The type of the error. Can be "known" or "unknown"
+	#  @param error_details A string with information about the error
+	def save_error(self, error_time, chat_identity, error_type, error_details):
+
+		try:
+			sql_command = "INSERT INTO errors (error_time, user_identity, error_type, details) VALUES (%s, %s, %s, %s);"
+			self.cursor_database.execute(sql_command , (error_time, chat_identity, error_type, error_details))
+			self.connection_database.commit()
+		except:
+			error_time_string = error_time.strftime("%d %b %Y %H:%M:%S")
+			message_on_stdout = 'Error cannot be saved in database.\n' + error_time_string + ' - ' + str(chat_identity) + ' - ' + error_details
+			print message_on_stdout
 
 	# --- TO BE IMPLEMENTED IN THE FUTURE (MAYBE?) ---
 
