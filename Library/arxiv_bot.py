@@ -77,17 +77,6 @@ class ArxivBot(telepot.Bot):
 		self.cursor_database.close()
 		self.connection_database.close()
 
-	## This method allows for the injection of the name of the files for the error, feedback, and chat logs.
-	#
-	#  @param self The object pointer
-	#  @param errors_file_name The string with the path to the error logfile
-	#  @param message_file_name The string with the path to the chat logfile
-	#  @param fdbk_tbl The string with the name of the feedback table
-	def set_log_files(self, message_file_name):
-
-		## The path to the chat logfile
-		self.message_log_file = message_file_name
-
 	## This method allows for the injection of the email address for the feedbacks
 	#
 	#  @param self The object pointer
@@ -139,14 +128,17 @@ class ArxivBot(telepot.Bot):
 	def handle_chat_message(self, msg):
 
 		content_type, chat_type, chat_id = telepot.glance(msg, 'chat')
-		self.save_message_details_log( chat_id, content_type )
 
 		if content_type != 'text':
 			self.sendMessage(chat_id, u'You can only send me text messages, sorry!')
 			return None
 
 		text_message = msg[content_type]
-		self.save_message_content_log( text_message )
+
+		try:
+			self.save_message_log( chat_id, content_type, text_message )
+		except:
+			return None
 
 		if emjd.detect_emoji(text_message):
 			self.sendMessage(chat_id, u'You have used an invalid unicode character. Unacceptable! \U0001F624')
@@ -189,9 +181,12 @@ class ArxivBot(telepot.Bot):
 
 		query_id, chat_id, query_data = telepot.glance(msg, 'callback_query')
 		msg_id = telepot.origin_identifier(msg)
+		content_type = 'callback'
 
-		self.save_message_details_log( chat_id, query_id )
-		self.save_message_content_log( query_data )
+		try:
+			self.save_message_log( chat_id, content_type, query_data, query_id)
+		except:
+			return None
 
 		try:
 			function, command, new_start = query_data.split()
@@ -836,29 +831,30 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_bot.save_feedback')
 			raise
 
-	## This method saves the details of the message (who, what) in a log file for statistical purposes.
+	## This method saves the details of the message (who, what) into the postgreSQL database 'chat' for statistical purposes.
 	#
 	#  **NOTE**: The chat identity is saved, but not other information such as the real name of the user.
 	#
 	#  @param self The object pointer
 	#  @param chat_identity The identity number associated to the chat
 	#  @param content_type The type of content sent by the user (text, picture, etc.)
-	def save_message_details_log(self, chat_identity, content_type):
-
-		message_time = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
-		message_string = message_time + ' - ' + str(chat_identity) + ' - ' + content_type + '\n'
-		with open(self.message_log_file, 'a') as msglog:
-			msglog.write(message_string)
-
-	## This method saves the content of the message in a log file for statistical purposes.
-	#
-	#  @param self The object pointer
 	#  @param text_message The message sent by the user
-	def save_message_content_log(self, text_message):
+	def save_message_log(self, chat_identity, content_type, text_message, query_identity = None):
 
-		message_string = text_message+u'\n'
-		with open(self.message_log_file, 'a') as msglog:
-			msglog.write(message_string.encode('utf8'))
+		message_time = datetime.datetime.utcnow()
+
+		try:
+			sql_command = "INSERT INTO chat (message_time, user_identity, content_type, content, query_identity) VALUES (%s, %s, %s, %s, %s);"
+			self.cursor_database.execute(sql_command , (message_time, chat_identity, content_type, text_message, query_identity))
+			self.connection_database.commit()
+		except psycopg2.Error as PGE:
+			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
+			self.save_known_error_log(chat_identity, PGE)
+			raise
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_bot.save_message_log')
+			raise
 
 	## This method prepares the information about a unknown errors.
 	#
