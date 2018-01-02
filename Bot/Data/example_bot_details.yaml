@@ -1,8 +1,12 @@
 # The details listed below are provided by the BotFather (https://core.telegram.org/bots#6-botfather)
-# during the creation of a new bot, except for the email address for the feedbacks.
+# during the creation of a new bot, except for the email address for the feedbacks, and the details
+# of the new PostgreSQL user and database you want to create.
 
 name: 'name of the bot'
 username: 'username_bot'
 web: 'telegram.me/username_bot'
 token: '***'
 email: 'email.address@provider.com'
+database_name: 'database_name'
+database_user: 'database_user'
+database_password: 'database_password'
