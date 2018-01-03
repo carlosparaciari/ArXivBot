@@ -35,19 +35,23 @@ try:
 	conn.set_session(autocommit=True)
 	print "Connection to PostgreSQ established."
 except:
-	print "Impossible to connect to PostgreSQL. Please check the username and password provided."
+	print "ERROR: Impossible to connect to PostgreSQL. Please check the username and password provided."
 	sys.exit()
 
 cur = conn.cursor()
 
 # Create a new user using the information stored in the yaml file with all the details of the bot.
 
-# NOTE 2 : Check that the yaml file contains the correct details.
-#		   See the template file at ./Bot/Data/example_details.yaml
+# NOTE 2 : First of all, you need to create the yaml file where all details ArXivBot needs are stored.
+#		   See the example yaml file in the ./Bot/Data/ folder.
+#		   In the same folder create the file 'bot_details.yaml' and fill all the necessary
+#		   fields as shown in the example yaml file.
 
 import yaml
 
-with open(os.path.join('Bot', 'Data','example_details.yaml'), 'r') as file_input:
+yamlfile_details = 'bot_details.yaml'
+
+with open(os.path.join('Bot', 'Data', yamlfile_details), 'r') as file_input:
 	detail = yaml.load(file_input)
 
 try:
@@ -55,7 +59,7 @@ try:
 	cur.execute(sql_command)
 	print "New PostgreSQL user created."
 except:
-	print "Impossible to create a new user for PostgreSQL. Please check that the user connected to PostgreSQL can create new users."
+	print "ERROR: Impossible to create a new user for PostgreSQL. Please check that the user connected to PostgreSQL can create new users."
 	cur.close()
 	conn.close()
 	sys.exit()
@@ -67,7 +71,7 @@ try:
 	cur.execute(sql_command)
 	print "New database created."
 except:
-	print "Impossible to create a new database for PostgreSQL. Please check that the user connected to PostgreSQL can create new database."
+	print "ERROR: Impossible to create a new database for PostgreSQL. Please check that the user connected to PostgreSQL can create new database."
 	cur.close()
 	conn.close()
 	sys.exit()
@@ -83,7 +87,7 @@ try:
 	new_conn = psycopg2.connect(dbname = detail['database_name'], user = detail['database_user'], password = detail['database_password'])
 	print "Connection to new database established."
 except:
-	print "Impossible to connect to PostgreSQL with the new user. Please check the existing user had privileges to create new users."
+	print "ERROR: Impossible to connect to PostgreSQL with the new user. Please check the existing user had privileges to create new users."
 	sys.exit()
 
 new_cur = new_conn.cursor()
@@ -104,7 +108,7 @@ try:
 	new_cur.execute(sql_command)
 	print "Table 'chat' created."
 except:
-	print "Impossible to create the tables. Please check the privileges of the new user."
+	print "ERROR: Impossible to create the tables. Please check the privileges of the new user."
 	new_cur.close()
 	new_conn.close()
 	sys.exit()
