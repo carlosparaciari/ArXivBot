@@ -197,6 +197,27 @@ def prepare_authors_field_RSS(dictionary, max_number_authors):
 	else:
 		return None
 
+## This function returns the date of the RSS feed (as a datetime object).
+#
+#  This function looks in the dictionary prepared by @ref parse_response, and
+#  finds the date in which the RSS feed was published.
+#
+#  @param dictionary This is the output of the function @ref parse_response
+def find_date_RSS(dictionary):
+
+	feed_details = is_field_there(dictionary, 'feed')
+	feed_date = is_field_there(feed_details, 'updated')
+	
+	if feed_date != None:
+		if isinstance(feed_date, unicode) and len(feed_date) > 10:
+			feed_date = feed_date[:10]
+			feed_datetime = dt.datetime.strptime(feed_date, '%Y-%m-%d')
+			return feed_datetime
+		else:
+			raise TypeError('The argument passed is not a date string.')
+	else:
+		raise NoArgumentError('The RSS feed does not have the publication date.')
+
 ## This function removes hyper links, and is needed for the prepare_authors_field_RSS.
 #
 #  This function removes the hyper links (<a href = ***> ... </a>) from a string,
@@ -285,6 +306,8 @@ def is_field_there(dictionary, key):
 
 ## This function finds the publishing date of a given entry, and is needed for the @ref review_response function.
 #
+#  This function returns a datetime object.
+#
 #  @param dictionary This is the output of the function @ref parse_response
 def find_publishing_date(dictionary):
 
@@ -292,7 +315,7 @@ def find_publishing_date(dictionary):
 
 	if isinstance(date, unicode) and len(date) > 10:
 		date = date[0:10]
-		date = dt.datetime.strptime(date, '%Y-%m-%d').strftime('%d %b %Y')
+		date = dt.datetime.strptime(date, '%Y-%m-%d')
 		return date
 	else:
 		return None

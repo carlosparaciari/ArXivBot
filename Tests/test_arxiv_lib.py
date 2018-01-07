@@ -7,6 +7,7 @@ from customised_exceptions import NoArgumentError, GetRequestError,NoCategoryErr
 from subprocess import check_call
 import requests
 import time
+import datetime
 import cgi
 
 # NOTICE : A few tests make a request to the arXiv.
@@ -380,7 +381,7 @@ def test_review_response_correct_api():
 
 	result_list = al.review_response(dictionary, 100, 'API')
 
-	expected_list = [{'title' : u'Nice Title', 'authors' : u'Carlo', 'date' : u'12 May 1992', 'link' : 'www.hi.com'}]
+	expected_list = [{'title' : u'Nice Title', 'authors' : u'Carlo', 'date' : datetime.datetime.strptime(u'1992-05-12', '%Y-%m-%d') , 'link' : 'www.hi.com'}]
 
 	assert_equal(result_list, expected_list, "The obtained response is different from the expected one")
 
@@ -421,7 +422,7 @@ def test_review_response_correct_from_link():
 
 	expected_list = {'link': u'http://arxiv.org/abs/1311.6008v2',
 					 'authors': u"Carlo Sparaciari, Stefano Olivares, Francesco Ticozzi, Matteo G. A. Paris",
-					 'date' : u'23 Nov 2013',
+					 'date' : datetime.datetime.strptime(u'2013-11-23', '%Y-%m-%d'),
 					 'title': u'Exact and approximate solutions for the quantum minimum-Kullback-entropy estimation problem'}
 
 	assert_equal(result_list[0], expected_list, "The obtained response is different from the expected one")
@@ -608,6 +609,50 @@ def test_authors_count_same_string_zero():
 	output_index = al.authors_count_same_string(input_string, 0)
 	assert_equal(output_index, expected_index, "The obtained response is different from the expected one")
 
+# ----------------------------------- FIND DATE RSS TESTS -----------------------------------
+
+# test that the correct error is returned when there is no 'updated' key
+def test_find_date_RSS_updated_not_present():
+
+	dictionary = {'a' : 1 , 'b' : 'hi', 'feed' : {'c' : 3 , 'd' : ['hello']}}
+
+	with assert_raises(NoArgumentError):
+		al.find_date_RSS(dictionary)
+
+# test that the correct error is returned when there is no 'feed' key
+def test_find_date_RSS_feed_not_present():
+
+	dictionary = {'a' : 1 , 'b' : 'hi', 'e' : {'c' : 3 , 'd' : ['hello'], 'updated' : '2018-01-04T20:30:00-05:00'}}
+
+	with assert_raises(NoArgumentError):
+		al.find_date_RSS(dictionary)
+
+# test that the correct error is returned when the keys 'feed' and 'update' are present, but the value is not a string
+def test_find_date_RSS_wrong_type():
+
+	dictionary = {'a' : 1 , 'b' : 'hi', 'feed' : {'c' : 3 , 'd' : ['hello'], 'updated' : 7}}
+
+	with assert_raises(TypeError):
+		al.find_date_RSS(dictionary)
+
+# test that the correct error is returned when the keys 'feed' and 'update' are present, but the value is a string with len < 10
+def test_find_date_RSS_wrong_length():
+
+	dictionary = {'a' : 1 , 'b' : 'hi', 'feed' : {'c' : 3 , 'd' : ['hello'], 'updated' : u'bad str'}}
+
+	with assert_raises(TypeError):
+		al.find_date_RSS(dictionary)
+
+# test that the correct output is returned when the keys 'feed' and 'update' are present
+def test_find_date_RSS_correct():
+
+	dictionary = {'a' : 1 , 'b' : 'hi', 'feed' : {'c' : 3 , 'd' : ['hello'], 'updated' : u'2018-01-04T20:30:00-05:00'}}
+
+	expected_output = datetime.datetime.strptime('2018 01 04', '%Y %m %d')
+	obtained_output = al.find_date_RSS(dictionary)
+
+	assert_equal(obtained_output, expected_output, "The obtained response is different from the expected one")
+
 # -------------------------------- PREPARE AUTHORS RSS TESTS --------------------------------
 
 # test that the authors list is not cut if the number of authors is less or equal to the desired one
@@ -756,6 +801,7 @@ def test_find_publishing_date_correct():
 
 	dictionary = {'a' : 1 , 'b' : 'hi', 'published' : u'2014-07-02T07:41:45Z'}
 
-	element = al.find_publishing_date(dictionary)
+	obtained_date = al.find_publishing_date(dictionary)
+	expected_date = datetime.datetime.strptime('2014 07 02', '%Y %m %d')
 
-	assert_equal(element, u'02 Jul 2014', "The obtained response is different from the expected one")
+	assert_equal(obtained_date, expected_date, "The obtained response is different from the expected one")

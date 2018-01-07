@@ -247,7 +247,7 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		try:
-			search_list, total_results = self.search_and_format( easy_search_link, chat_identity )
+			search_list, total_results = self.search_and_format_API( easy_search_link, chat_identity )
 		except:
 			return None
 
@@ -285,7 +285,7 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		try:
-			search_list, total_results = self.search_and_format( easy_search_link, chat_identity )
+			search_list, total_results = self.search_and_format_API( easy_search_link, chat_identity )
 		except:
 			return None
 
@@ -372,7 +372,7 @@ class ArxivBot(telepot.Bot):
 			return None
 
 		try:
-			search_list, total_results = self.search_and_format( today_search_link, chat_identity, feed_type = 'RSS' )
+			search_list, feed_date = self.search_and_format_RSS( today_search_link, chat_identity )
 		except:
 			return None
 
@@ -380,7 +380,7 @@ class ArxivBot(telepot.Bot):
 		search_list = search_list[:self.max_rss_result_number]
 		remaining_results = total_results - self.max_rss_result_number
 
-		self.send_results_back_rss(chat_identity, search_list, remaining_results)
+		self.send_results_back_rss(chat_identity, search_list, remaining_results, arxiv_category, feed_date)
 
 	## This method returns the email address where the user can submit a feedback, or saves the feedback received.
 	#
@@ -445,13 +445,108 @@ class ArxivBot(telepot.Bot):
 
 		self.send_message_safely( chat_identity, message )
 
-	## This method is used in the other search methods to send the request to the arXiv, parse the result, and format it accordingly.
+	## This method is used in the API search methods to send the request to the arXiv, parse the result, and format it accordingly.
 	# 
 	#  @param self The object pointer
 	#  @param search_link The arXiv link for the request
 	#  @param chat_identity The identity number associated to the chat
-	#  @param feed_type The type of feed the method has to process (can be either API or RSS). API is default
-	def search_and_format(self, search_link, chat_identity, feed_type = 'API'):
+	def search_and_format_API(self, search_link, chat_identity):
+
+		try:
+			search_dictionary = self.send_and_parse_request(search_link, chat_identity)
+		except:
+			raise
+
+		try:
+			search_list = al.review_response( search_dictionary , self.max_number_authors , 'API' )
+		except NoArgumentError:
+			self.sendMessage(chat_identity, u'No result has been found for your search. Try again!')
+			raise
+		except TypeError as TE:
+			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+			self.save_known_error_log(chat_identity, TE)
+			raise
+		except ValueError as VE:
+			self.sendMessage(chat_identity, u'We are experiencing some technical problems, sorry!')
+			self.save_known_error_log(chat_identity, VE)
+			raise
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.review_response')
+			raise
+
+		try:
+			total_results = al.total_number_results( search_dictionary )
+		except NoArgumentError as NAE:
+			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+			self.save_known_error_log(chat_identity, NAE)
+			raise
+		except TypeError as TE:
+			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+			self.save_known_error_log(chat_identity, TE)
+			raise
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
+			raise
+
+		return search_list, total_results
+
+	## This method is used in the RSS feed methods to send the request to the arXiv, parse the result, and format it accordingly.
+	# 
+	#  @param self The object pointer
+	#  @param search_link The arXiv link for the request
+	#  @param chat_identity The identity number associated to the chat
+	def search_and_format_RSS(self, search_link, chat_identity):
+
+		try:
+			search_dictionary = self.send_and_parse_request(search_link, chat_identity)
+		except:
+			raise
+
+		try:
+			search_list = al.review_response( search_dictionary , self.max_number_authors , 'RSS' )
+		except NoArgumentError:
+			self.sendMessage(chat_identity, u'There are no submissions to your favourite category today, try tomorrow!')
+			raise
+		except TypeError as TE:
+			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+			self.save_known_error_log(chat_identity, TE)
+			raise
+		except ValueError as VE:
+			self.sendMessage(chat_identity, u'We are experiencing some technical problems, sorry!')
+			self.save_known_error_log(chat_identity, VE)
+			raise
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.review_response')
+			raise
+
+		try:
+			feed_date = al.find_date_RSS( search_dictionary )
+		except NoArgumentError as NAE:
+			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+			self.save_known_error_log(chat_identity, NAE)
+			raise
+		except TypeError as TE:
+			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
+			self.save_known_error_log(chat_identity, TE)
+			raise
+		except:
+			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
+			self.save_unknown_error_log(chat_identity, 'arxiv_lib.find_date_RSS')
+			raise
+
+		return search_list, feed_date
+
+	## This method sends the request to the arXiv and parse the response.
+	# 
+	#  This method is used in the search_and_format methods, both for API search and RSS feed.
+	#
+	#  @param self The object pointer
+	#  @param search_link The arXiv link for the request
+	#  @param chat_identity The identity number associated to the chat
+	def send_and_parse_request(self, search_link, chat_identity):
 
 		try:
 			search_response = al.request_to_arxiv(search_link)
@@ -483,43 +578,7 @@ class ArxivBot(telepot.Bot):
 			self.save_unknown_error_log(chat_identity, 'arxiv_lib.parse_response')
 			raise
 
-		try:
-			search_list = al.review_response( search_dictionary , self.max_number_authors , feed_type )
-		except NoArgumentError:
-			self.sendMessage(chat_identity, u'No result has been found for your search. Try again!')
-			raise
-		except TypeError as TE:
-			self.sendMessage(chat_identity, u'The result of the search got corrupted.')
-			self.save_known_error_log(chat_identity, TE)
-			raise
-		except ValueError as VE:
-			self.sendMessage(chat_identity, u'We are experiencing some technical problems, sorry!')
-			self.save_known_error_log(chat_identity, VE)
-			raise
-		except:
-			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-			self.save_unknown_error_log(chat_identity, 'arxiv_lib.review_response')
-			raise
-
-		total_results = None
-
-		if feed_type == 'API':
-			try:
-				total_results = al.total_number_results( search_dictionary )
-			except NoArgumentError as NAE:
-				self.sendMessage(chat_identity, u'The result of the search got corrupted.')
-				self.save_known_error_log(chat_identity, NAE)
-				raise
-			except TypeError as TE:
-				self.sendMessage(chat_identity, u'The result of the search got corrupted.')
-				self.save_known_error_log(chat_identity, TE)
-				raise
-			except:
-				self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
-				self.save_unknown_error_log(chat_identity, 'arxiv_lib.total_number_results')
-				raise
-
-		return search_list, total_results
+		return search_dictionary
 
 	## This method formats the results of the search and prepares the message to be sent to the user.
 	#
@@ -529,7 +588,7 @@ class ArxivBot(telepot.Bot):
 	#  @param self The object pointer
 	#  @param argument The keywords used in the search
 	#  @param start_num The number of the first result shown
-	#  @param search_list The unformatted list with all details about the results (prepared with the @ref search_and_format method)
+	#  @param search_list The unformatted list with all details about the results (prepared with the @ref search_and_format_API method)
 	#  @param total_results The total number of results associated with the search
 	def prepare_message_api(self, argument, start_num, search_list, total_results):
 
@@ -539,7 +598,7 @@ class ArxivBot(telepot.Bot):
 		message_result = 'Your search keywords are:\n'+keywords+'\n\n'
 		
 		for result in search_list:
-			new_item = '<b>'+str(result_counter)+'</b>. <em>'+result['title']+'</em>\n'+result['authors']+'\n<em>Submitted on '+result['date']+'</em>\n'+result['link']+'\n\n'
+			new_item = '<b>' + str(result_counter) + '</b>. <em>' + result['title'] + '</em>\n' + result['authors'] + '\n<em>Submitted on ' + result['date'].strftime('%d %b %Y') + '</em>\n' + result['link'] + '\n\n'
 			message_result += new_item
 			result_counter += 1
 		
@@ -556,15 +615,16 @@ class ArxivBot(telepot.Bot):
 	#
 	#  @param self The object pointer
 	#  @param chat_identity The identity number associated to the chat
-	#  @param search_list The unformatted list with all details about the results (prepared with the @ref search_and_format method)
+	#  @param search_list The unformatted list with all details about the results (prepared with the @ref search_and_format_RSS method)
 	#  @param remaining_results The remaining results which have not been shown
-	def send_results_back_rss(self, chat_identity, search_list, remaining_results):
+	def send_results_back_rss(self, chat_identity, search_list, remaining_results, arxiv_category, feed_date):
 
 		result_counter = 1
-		message_result = ''
+		today = feed_date + datetime.timedelta(days=1)
+		message_result = 'List of submissions to <b>' + arxiv_category + '</b> for today ' + today.strftime("%a, %d %b %y") + '.\n\n'
 		
 		for result in search_list:
-			new_item = '<b>'+str(result_counter)+'</b>. <em>'+result['title']+'</em>\n'+result['authors']+'\n'+result['link']+'\n\n'
+			new_item = '<b>' + str(result_counter) + '</b>. <em>' + result['title'] + '</em>\n' + result['authors'] + '\n'+result['link'] + '\n\n'
 			try:
 				message_result = self.check_size_and_split_message(message_result, new_item, chat_identity)
 			except:
