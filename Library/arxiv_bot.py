@@ -24,7 +24,7 @@ from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 class ArxivBot(telepot.Bot):
 
 	## Class constructor
-	def __init__(self, token, database_name, database_user, database_password):
+	def __init__(self, token, db_name, db_user, db_password):
 
 		super(ArxivBot, self).__init__(token)
 
@@ -52,22 +52,18 @@ class ArxivBot(telepot.Bot):
 		## The number of seconds to wait after using the API (set by arXiv)
 		self.arxiv_fair_time = 3
 
-		# Open connection with the database (need this since errors, chat messages,
-		# feedbacks, and preferences are stored in postgres database).
+		## The name of the PostgreSQL database
+		self.database_name = db_name
 
-		try:
-			## The database connection object
-			self.connection_database = psycopg2.connect(dbname = database_name,
-														user = database_user,
-														password = database_password)
-			## The database cursor object
-			self.cursor_database = self.connection_database.cursor()
-		except:
-			error_time = datetime.datetime.utcnow()
-			error_time_string = error_time.strftime("%d %b %Y %H:%M:%S")
-			exception_type, exception_description, traceback = sys.exc_info()
-			message_on_stdout = 'Error occurred during connection to database.\n' + error_time_string + ' - ' + exception_type.__name__ + ' - ' + str(exception_description)
-			print message_on_stdout
+		## The user of the PostgreSQL database
+		self.database_user = db_user
+
+		## The password of the PostgreSQL database
+		self.database_password = db_password
+
+		# Open connection with the database (need this since errors, chat messages,
+		# feedbacks, and preferences are stored in PostgreSQL database).
+		self.open_connection_with_database( first_time = True )
 
 	## Class destructor
 	def __del__(self):
@@ -75,7 +71,7 @@ class ArxivBot(telepot.Bot):
 		super(ArxivBot, self).__del__()
 
 		self.cursor_database.close()
-		self.connection_database.close()
+		self.connection_database.close()		
 
 	## This method allows for the injection of the email address for the feedbacks
 	#
@@ -768,6 +764,7 @@ class ArxivBot(telepot.Bot):
 			preference_tuple = self.cursor_database.fetchone()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
+			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -790,6 +787,7 @@ class ArxivBot(telepot.Bot):
 			self.connection_database.commit()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
+			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -808,6 +806,7 @@ class ArxivBot(telepot.Bot):
 			self.connection_database.commit()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
+			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -827,6 +826,7 @@ class ArxivBot(telepot.Bot):
 			category_tuple = self.cursor_database.fetchone()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
+			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -884,6 +884,7 @@ class ArxivBot(telepot.Bot):
 			self.connection_database.commit()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
+			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 			raise
 		except:
@@ -909,6 +910,7 @@ class ArxivBot(telepot.Bot):
 			self.connection_database.commit()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
+			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 			raise
 		except:
@@ -935,7 +937,7 @@ class ArxivBot(telepot.Bot):
 	#  @param chat_identity The identity number associated to the chat
 	#  @param raised_exception A string with information about the error verified
 	def save_known_error_log(self, chat_identity, raised_exception):
-
+		
 		error_time = datetime.datetime.utcnow()
 		error_type = 'known'
 		error_details = type(raised_exception).__name__ + ' - ' + raised_exception.args[0]
@@ -958,6 +960,31 @@ class ArxivBot(telepot.Bot):
 		except:
 			error_time_string = error_time.strftime("%d %b %Y %H:%M:%S")
 			message_on_stdout = 'Error cannot be saved in database.\n' + error_time_string + ' - ' + str(chat_identity) + ' - ' + error_details
+			print message_on_stdout
+
+	## This method open the connection with the database
+	def open_connection_with_database(self, first_time = False):
+
+		if first_time == False:
+			connection_is_open = self.connection_database.closed == 0
+			cursor_is_open = self.cursor_database.closed == False
+
+			if cursor_is_open:
+				self.cursor_database.close()
+			if connection_is_open:
+				self.connection_database.close()
+		try:
+			## The database connection object
+			self.connection_database = psycopg2.connect(dbname = self.database_name,
+														user = self.database_user,
+														password = self.database_password)
+			## The database cursor object
+			self.cursor_database = self.connection_database.cursor()
+		except:
+			error_time = datetime.datetime.utcnow()
+			error_time_string = error_time.strftime("%d %b %Y %H:%M:%S")
+			exception_type, exception_description, traceback = sys.exc_info()
+			message_on_stdout = 'Error occurred during connection to database.\n' + error_time_string + ' - ' + exception_type.__name__ + ' - ' + str(exception_description)
 			print message_on_stdout
 
 	# --- TO BE IMPLEMENTED IN THE FUTURE (MAYBE?) ---
