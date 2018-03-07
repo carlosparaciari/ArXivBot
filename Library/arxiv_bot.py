@@ -61,17 +61,12 @@ class ArxivBot(telepot.Bot):
 		## The password of the PostgreSQL database
 		self.database_password = db_password
 
-		# Open connection with the database (need this since errors, chat messages,
-		# feedbacks, and preferences are stored in PostgreSQL database).
-		self.open_connection_with_database( first_time = True )
-
 	## Class destructor
 	def __del__(self):
 
 		super(ArxivBot, self).__del__()
 
-		self.cursor_database.close()
-		self.connection_database.close()		
+		self.close_connection_with_database()
 
 	## This method allows for the injection of the email address for the feedbacks
 	#
@@ -759,12 +754,13 @@ class ArxivBot(telepot.Bot):
 	def preference_exists(self, chat_identity):
 
 		try:
+			self.open_connection_with_database()
 			sql_command = "SELECT exists (SELECT 1 FROM preferences WHERE user_identity = %s LIMIT 1);"
 			self.cursor_database.execute(sql_command, (chat_identity,))
 			preference_tuple = self.cursor_database.fetchone()
+			self.close_connection_with_database()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
-			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -782,12 +778,13 @@ class ArxivBot(telepot.Bot):
 	def overwrite_preference(self, chat_identity, category):
 
 		try:
+			self.open_connection_with_database()
 			sql_command = "UPDATE preferences SET category = %s WHERE user_identity = %s;"
 			self.cursor_database.execute(sql_command, (category, chat_identity))
 			self.connection_database.commit()
+			self.close_connection_with_database()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
-			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -801,12 +798,13 @@ class ArxivBot(telepot.Bot):
 	def add_preference(self, chat_identity, category):
 
 		try:
+			self.open_connection_with_database()
 			sql_command = "INSERT INTO preferences (user_identity, category) VALUES (%s, %s);"
 			self.cursor_database.execute(sql_command, (chat_identity, category))
 			self.connection_database.commit()
+			self.close_connection_with_database()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
-			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -821,12 +819,13 @@ class ArxivBot(telepot.Bot):
 		category = None
 
 		try:
+			self.open_connection_with_database()
 			sql_command = "SELECT category FROM preferences WHERE user_identity = %s;"
 			self.cursor_database.execute(sql_command, (chat_identity,))
 			category_tuple = self.cursor_database.fetchone()
+			self.close_connection_with_database()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
-			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')
@@ -879,12 +878,13 @@ class ArxivBot(telepot.Bot):
 		message_time = datetime.datetime.utcnow()
 
 		try:
+			self.open_connection_with_database()
 			sql_command = "INSERT INTO feedbacks (message_time, user_identity, comment) VALUES (%s, %s, %s);"
 			self.cursor_database.execute(sql_command , (message_time, chat_identity, argument))
 			self.connection_database.commit()
+			self.close_connection_with_database()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
-			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 			raise
 		except:
@@ -905,12 +905,13 @@ class ArxivBot(telepot.Bot):
 		message_time = datetime.datetime.utcnow()
 
 		try:
+			self.open_connection_with_database()
 			sql_command = "INSERT INTO chat (message_time, user_identity, content_type, content, query_identity) VALUES (%s, %s, %s, %s, %s);"
 			self.cursor_database.execute(sql_command , (message_time, chat_identity, content_type, text_message, query_identity))
 			self.connection_database.commit()
+			self.close_connection_with_database()
 		except psycopg2.Error as PGE:
 			self.sendMessage(chat_identity, u"We are experiencing some issues with our database. Sorry!")
-			self.open_connection_with_database()
 			self.save_known_error_log(chat_identity, PGE)
 			raise
 		except:
@@ -954,31 +955,23 @@ class ArxivBot(telepot.Bot):
 	def save_error(self, error_time, chat_identity, error_type, error_details):
 
 		try:
+			self.open_connection_with_database()
 			sql_command = "INSERT INTO errors (error_time, user_identity, error_type, details) VALUES (%s, %s, %s, %s);"
 			self.cursor_database.execute(sql_command , (error_time, chat_identity, error_type, error_details))
 			self.connection_database.commit()
+			self.close_connection_with_database()
 		except:
 			error_time_string = error_time.strftime("%d %b %Y %H:%M:%S")
 			message_on_stdout = 'Error cannot be saved in database.\n' + error_time_string + ' - ' + str(chat_identity) + ' - ' + error_details
 			print message_on_stdout
 
-	## This method open the connection with the database
-	def open_connection_with_database(self, first_time = False):
-
-		if first_time == False:
-			connection_is_open = self.connection_database.closed == 0
-			cursor_is_open = self.cursor_database.closed == False
-
-			if cursor_is_open:
-				self.cursor_database.close()
-			if connection_is_open:
-				self.connection_database.close()
+	## This method opens the connection with the database
+	def open_connection_with_database(self):
+			
 		try:
-			## The database connection object
 			self.connection_database = psycopg2.connect(dbname = self.database_name,
 														user = self.database_user,
 														password = self.database_password)
-			## The database cursor object
 			self.cursor_database = self.connection_database.cursor()
 		except:
 			error_time = datetime.datetime.utcnow()
@@ -986,6 +979,17 @@ class ArxivBot(telepot.Bot):
 			exception_type, exception_description, traceback = sys.exc_info()
 			message_on_stdout = 'Error occurred during connection to database.\n' + error_time_string + ' - ' + exception_type.__name__ + ' - ' + str(exception_description)
 			print message_on_stdout
+
+	## This method closes the connection with the database
+	def close_connection_with_database(self):
+
+		connection_is_open = self.connection_database.closed == 0
+		cursor_is_open = self.cursor_database.closed == False
+
+		if cursor_is_open:
+			self.cursor_database.close()
+		if connection_is_open:
+			self.connection_database.close()
 
 	# --- TO BE IMPLEMENTED IN THE FUTURE (MAYBE?) ---
 
