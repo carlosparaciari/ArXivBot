@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join('..', 'Library')))
 import arxiv_bot as ab
 import yaml
 import datetime
+from telepot.loop import MessageLoop
 
 with open(os.path.join('Data','bot_details.yaml'), 'r') as file_input:
 	detail = yaml.load(file_input)
@@ -18,7 +19,7 @@ bot.set_email_feedback(detail['email'])
 # Start running the service
 
 try:
-	bot.message_loop(run_forever = True)  # <--- NOW DEPRECATED. See the manual for information on MessageLoop method
+	MessageLoop(bot).run_forever()
 except:
 	error_time = datetime.datetime.utcnow()
 	error_time_string = error_time.strftime("%d %b %Y %H:%M:%S")
