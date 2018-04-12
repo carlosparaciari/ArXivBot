@@ -138,7 +138,7 @@ class ArxivBot(telepot.Bot):
 		text_message_list = text_message.split()
 		command = text_message_list[0]
 
-		if command == '/search' and len(text_message_list) > 1:
+		if command == '/search':
 			command_argument = text_message_list[1:]
 			self.do_easy_search_chat( command_argument , chat_id )
 		elif command == '/set' and len(text_message_list) == 2:
@@ -230,7 +230,7 @@ class ArxivBot(telepot.Bot):
 		try:
 			easy_search_link = al.simple_search(argument, self.arxiv_search_link, initial_result_number, self.max_api_result_number)
 		except NoArgumentError:
-			self.sendMessage(chat_identity, u'Please provide some arguments for the search.')
+			self.sendMessage(chat_identity, u'Please provide some arguments for your arXiv search.')
 			return None
 		except:
 			self.sendMessage(chat_identity, u'An unknown error occurred. \U0001F631')

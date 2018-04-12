@@ -14,39 +14,130 @@ import cgi
 # 		   In order to satisfy the arXiv regulation, a 3-second delay is used every time the test
 #		   makes a request to the arXiv (ONLY 3 tests at the moment)
 
-# ---------------------------------- ADVANCED SEARCH TESTS ----------------------------------
+# # ---------------------------------- ADVANCED SEARCH TESTS ----------------------------------
 
-# when no arguments are passed, we need to raise error (NoArgumentError)
-def test_advanced_search_no_arguments():
+# # when no arguments are passed, we need to raise error (NoArgumentError)
+# def test_advanced_search_no_arguments():
 
-	link = 'http://export.arxiv.org/api/query?search_query='	
+# 	link = 'http://export.arxiv.org/api/query?search_query='	
 
-	with assert_raises(NoArgumentError):
-		al.advanced_search(False, False, False, False, False, False, False, False, link)
+# 	with assert_raises(NoArgumentError):
+# 		al.advanced_search(False, False, False, False, False, False, False, False, link)
 
-# when the response from arXiv is wrong (HTTPError)
-def test_advanced_search_status_code():
+# # when the response from arXiv is wrong (HTTPError)
+# def test_advanced_search_status_code():
 
-	link = 'http://export.arxiv.org/apii/query?search_query=au:sparaciari_c'	
+# 	link = 'http://export.arxiv.org/apii/query?search_query=au:sparaciari_c'	
 
-	with assert_raises(requests.exceptions.HTTPError):
-		al.request_to_arxiv(link)
+# 	with assert_raises(requests.exceptions.HTTPError):
+# 		al.request_to_arxiv(link)
 
-# when the request to arXiv goes well
-def test_advanced_search_correct():
+# # when the request to arXiv goes well
+# def test_advanced_search_correct():
 
-	link = 'http://export.arxiv.org/api/query?search_query='
-	test_file = os.path.join('Data', 'text_response_test_advanced_search.txt')
+# 	link = 'http://export.arxiv.org/api/query?search_query='
+# 	test_file = os.path.join('Data', 'text_response_test_advanced_search.txt')
 
-	search_link = al.advanced_search('sparaciari_c', 'kullback', False, False, False, False, False, False, link)
-	response = al.request_to_arxiv(search_link).text
-	time.sleep(3)
+# 	search_link = al.advanced_search('sparaciari_c', 'kullback', False, False, False, False, False, False, link)
+# 	response = al.request_to_arxiv(search_link).text
+# 	time.sleep(3)
 
-	with open(test_file, 'r') as f:
-		expected = f.read()
+# 	with open(test_file, 'r') as f:
+# 		expected = f.read()
 
-	# We remove the first few information, containing the current date.
-	assert_equal(response[504:], expected[504:], "The obtained response is different from the expected one")
+# 	# We remove the first few information, containing the current date.
+# 	assert_equal(response[504:], expected[504:], "The obtained response is different from the expected one")
+
+# ---------------------------------- PREPARE QUERY FIELD ----------------------------------
+
+# test query in all fields
+def test_prepare_field_query_all():
+
+	key = 'all:'
+	values_str = ['keyword']
+	values_list = ['keyword1', 'keyword2', 'keyword3']
+	connector = '+AND+'
+
+	expected_query_field_str = 'all:keyword'
+	expected_query_filed_list = 'all:keyword1+AND+all:keyword2+AND+all:keyword3'
+
+	obtained_query_field_str = al.prepare_field_query(key, values_str, connector)
+	obtained_query_field_list = al.prepare_field_query(key, values_list, connector)
+
+	assert_equal(obtained_query_field_str, expected_query_field_str, "The obtained query is different from the expected one")
+	assert_equal(obtained_query_field_list, expected_query_filed_list, "The obtained query is different from the expected one")
+
+# test query for author field
+def test_prepare_field_query_au():
+
+	key = 'au:'
+	values_str = ['Marco+Rossi']
+	values_list = ['Marco+Rossi', 'Giulia+Bianchi', 'Verdi']
+	connector = '+AND+'
+	quote = '%22'
+
+	expected_query_field_str = 'au:%22Marco+Rossi%22'
+	expected_query_filed_list = 'au:%22Marco+Rossi%22+AND+au:%22Giulia+Bianchi%22+AND+au:%22Verdi%22'
+
+	obtained_query_field_str = al.prepare_field_query(key, values_str, connector, quote)
+	obtained_query_field_list = al.prepare_field_query(key, values_list, connector, quote)
+
+	assert_equal(obtained_query_field_str, expected_query_field_str, "The obtained query is different from the expected one")
+	assert_equal(obtained_query_field_list, expected_query_filed_list, "The obtained query is different from the expected one")
+
+# test query for title field
+def test_prepare_field_query_ti():
+
+	key = 'ti:'
+	values_str = ['This+is+a+title']
+	connector = '+AND+'
+	quote = '%22'
+
+	expected_query_field_str = 'ti:%22This+is+a+title%22'
+	obtained_query_field_str = al.prepare_field_query(key, values_str, connector, quote)
+
+	assert_equal(obtained_query_field_str, expected_query_field_str, "The obtained query is different from the expected one")
+
+# test query for category field
+def test_prepare_field_query_cat():
+
+	key = 'cat:'
+	values_str = ['quant-ph']
+	values_list = ['quant-ph', 'math.MP']
+	connector = '+OR+'
+
+	expected_query_field_str = 'cat:quant-ph'
+	expected_query_filed_list = 'cat:quant-ph+OR+cat:math.MP'
+
+	obtained_query_field_str = al.prepare_field_query(key, values_str, connector)
+	obtained_query_field_list = al.prepare_field_query(key, values_list, connector)
+
+	assert_equal(obtained_query_field_str, expected_query_field_str, "The obtained query is different from the expected one")
+	assert_equal(obtained_query_field_list, expected_query_filed_list, "The obtained query is different from the expected one")
+
+# test non-list query (need to return empty string)
+def test_prepare_field_query_not_list():
+
+	key = 'all:'
+	values = 'not a list!'
+	connector = '+AND+'
+
+	expected_query_field = ''
+	obtained_query_field = al.prepare_field_query(key, values, connector)
+
+	assert_equal(obtained_query_field, expected_query_field, "The obtained query is different from the expected one")
+
+# test empty list query (need to return empty string)
+def test_prepare_field_query_empty():
+
+	key = 'all:'
+	values = []
+	connector = '+AND+'
+
+	expected_query_field = ''
+	obtained_query_field = al.prepare_field_query(key, values, connector)
+
+	assert_equal(obtained_query_field, expected_query_field, "The obtained query is different from the expected one")
 
 # ---------------------------------- SIMPLE SEARCH TESTS ----------------------------------
 
@@ -64,7 +155,7 @@ def test_simple_search_correctness_str():
 	link = 'http://export.arxiv.org/api/query?search_query='
 	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron&start=0&max_results=10'
 
-	obtained_link = al.simple_search('electron', link, 0, 10)
+	obtained_link = al.simple_search(['electron'], link, 0, 10)
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 
@@ -74,7 +165,7 @@ def test_simple_search_correctness_unicode():
 	link = 'http://export.arxiv.org/api/query?search_query='
 	correct_link = 'http://export.arxiv.org/api/query?search_query=all:electron&start=0&max_results=10'
 
-	obtained_link = al.simple_search(u'electron', link, 0, 10)
+	obtained_link = al.simple_search([u'electron'], link, 0, 10)
 
 	assert_equal(obtained_link, correct_link, "The obtained link is different from the expected one")
 

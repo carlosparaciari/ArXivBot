@@ -398,91 +398,78 @@ def category_exists(subject_category):
 
 	return subject_category in ALL_CATEGORIES
 
-## This function performs an advanced search the arXiv.
+## This function prepare the query for each field
+#
+#  The field query is composed by a key (for example, au: for author), one or more
+#  values, and some connectors (AND, or OR). Values is a list of unicode strings, and
+#  each string can be a single word or a sentence. In the latter case, quotes need to be used.
+#
+#  @param key The field of the query
+#  @param values A list of strings
+#  @param connector The logic connector (can be AND or OR)
+#  @param quote The quotes are needed for strings with multiple words
+def prepare_field_query(key, values, connector, quote = ''):
+
+	query_search_string = ''
+
+	if isinstance(values, list):
+		for value in values:
+			if isinstance(value, str) or isinstance(value, unicode):
+				query_search_string += key + quote + value + quote + connector
+		query_search_string = query_search_string[: - len(connector) ]
+
+	return query_search_string
+
+## This function performs a search the arXiv.
 #
 #  This function assembles the link for the request to arXiv, which will be passed
-#  to the @ref request_to_arxiv function.
-#  If a variable is not a string, it is not included in the function,
-#  But no exception is raised. Exception is raised only is the search
-#  is empty. After the query is done, the response is returned.
+#  to the @ref request_to_arxiv function. The search is made using some keywords,
+#  but additional options can be added. It is possible to add one or more authors,
+#  part of the title, one or more categories where to search in, and the time
+#  interval (in years).
 #
-#  @param author The searched author(s)
-#  @param title The searched title
-#  @param abstract The searched abstract
-#  @param comment The searched comment
-#  @param jref The searched journal reference
-#  @param category The searched category
-#  @param rnum The searched report number
-#  @param identity The searched identity number
-#  @param arxiv_search_link The link to the arXiv website
-def advanced_search(author, title, abstract, comment, jref, category, rnum, identity, arxiv_search_link):
-
-	# Initialising constant values for the search
-	connector = '+AND+'
-	length_check = len(arxiv_search_link)
-
-	# Creating the dictionary for the search
-	parameters = {
-	 'au:' : author ,
-	 'ti:' : title ,
-	 'abs:' : abstract ,
-	 'co:' : comment ,
-	 'jr:' : jref ,
-	 'cat:' : category ,
-	 'rm:' : rnum ,
-	 'id:' : identity
-	 }
-
-	# Creating the search string, adding each term iff it is a string
-	for key in parameters:
-		if isinstance(parameters[key], str):
-			arxiv_search_link += key + parameters[key] + connector
-
-	# Check that search_def is not empty. In that case, return error
-	if len(arxiv_search_link) == length_check:
-		raise NoArgumentError('No arguments have been provided to the search.')
-
-	# Remove last connector fromt the search
-	arxiv_search_link = arxiv_search_link[: - len(connector) ]
-
-	return arxiv_search_link
-
-## This function performs a simple search the arXiv.
-#
-#  This function assembles the link for the request to arXiv, which will be passed
-#  to the @ref request_to_arxiv function.
-#
-#  @param words The keywords of the search
+#  @param keywords a list of keywords of the search
 #  @param arxiv_search_link The link to the arXiv website
 #  @param start_num The number of the initial result
 #  @param max_num The maximum number of shown results
-def simple_search(words, arxiv_search_link, start_num, max_num):
+#  @param authors The authors list (optional)
+#  @param title The title (optional)
+#  @param categories The categories (optional)
+#  @param interval The time interval (optional)
+def simple_search(keywords, arxiv_search_link, start_num, max_num, authors = [], title = [], categories = [], interval = []):
 
-	# Initialising constant values for the search
-	connector = '+AND+'
-	length_check = len(arxiv_search_link)
-	key = 'all:'
+	con_AND = '+AND+'
+	con_OR = '+OR+'
+	brackets = ['%28','%29']
 	start_opt = '&start='
 	max_opt = '&max_results='
 
-	# If the argument is a list of words, iterate over it
-	if isinstance(words, list):
-		for word in words:
-			if isinstance(word, str) or isinstance(word, unicode):
-				arxiv_search_link += key + word + connector
+	length_check = len(arxiv_search_link)
 
-	# If it is a single string, add it without iterations
-	elif isinstance(words, str) or isinstance(words, unicode):
-		arxiv_search_link += key + words + connector
+	query_fields = [ {'key' : 'all:', 'values' : keywords,   'connector' : con_AND, 'quotes' : ''},
+					 {'key' : 'au:',  'values' : authors,    'connector' : con_AND, 'quotes' : '%22'},
+					 {'key' : 'ti:',  'values' : title,      'connector' : con_AND, 'quotes' : '%22'},
+					 {'key' : 'cat:', 'values' : categories, 'connector' : con_OR,  'quotes' : ''}
+				   ]
 
-	# Check that search_def is not empty. In that case, return error
+	for query_field in query_fields:
+		query_string = prepare_field_query( query_field['key'],
+											query_field['values'],
+											query_field['connector'],
+											query_field['quotes']
+										  )
+		if len(query_string) != 0:
+			if query_field['key'] == 'cat:':
+				query_string = brackets[0] + query_string + brackets[1]
+			arxiv_search_link += query_string + con_AND
+
 	if len(arxiv_search_link) == length_check:
 		raise NoArgumentError('No arguments have been provided to the search.')
+	else:
+		arxiv_search_link = arxiv_search_link[: - len(con_AND) ]
 
-	# Remove last connector from the search
-	arxiv_search_link = arxiv_search_link[: - len(connector) ]
+	# Prepare interval as submittedDate:[initial+TO+final]
 
-	# Add the options defining which results to show
 	arxiv_search_link += start_opt + str(start_num) + max_opt + str(max_num)
 
 	return arxiv_search_link
