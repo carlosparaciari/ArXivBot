@@ -7,7 +7,7 @@ The Bot utilises [telepot](https://github.com/nickoala/telepot), a framework for
 
 ## Make your own ArXivBot
 You do not need to clone this repository and run the Bot on your machine.
-In fact, you can find the ArXivBot at the following [link](https://storebot.me/bot/search_arxiv_bot) (**NOTE: the bot at this link is currently offline**), and you can use it straight away.
+In fact, you can find the ArXivBot at the following [link](https://storebot.me/bot/search_arxiv_bot), and you can use it straight away.
 
 However, if you want a private Bot for searching on the arXiv, you can fork and clone the repository on your machine, and run the script `start_bot.sh`. Notice that, for the ArXivBot to work, you first need to set up a few things on your local machine. First of all, you need to create the file `bot_details.yaml` in the `.\Bot\Data\` folder, and fill it with the relevant details. See the file `example_bot_details.yaml` in the same folder for a list of all the fields you need to provide. In particular, you will need to get a token form the [BotFather](https://telegram.me/BotFather), so that your bot can connect to Telegram.
 
